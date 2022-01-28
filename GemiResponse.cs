@@ -4,10 +4,10 @@ using HashDepot;
 
 namespace Gemini.Net
 {
-    public class GemiResponse
+    public class GeminiResponse
     {
 
-        public GemiUrl RequestUrl { get; private set; }
+        public GeminiUrl RequestUrl { get; private set; }
 
         /// <summary>
         /// The full raw response line from the server. [status][0x20][meta][CR][LF]
@@ -69,7 +69,7 @@ namespace Gemini.Net
 
         public int BodySize => HasBody ? BodyBytes.Length : 0;
 
-        internal GemiResponse(GemiUrl url)
+        internal GeminiResponse(GeminiUrl url)
         {
             RequestUrl = url;
             ConnectStatus = ConnectStatus.Error;
@@ -81,7 +81,7 @@ namespace Gemini.Net
             BodySkipped = false;
         }
 
-        public GemiResponse(GemiUrl url, string responseLine)
+        public GeminiResponse(GeminiUrl url, string responseLine)
         {
             RequestUrl = url;
 
