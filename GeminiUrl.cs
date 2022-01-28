@@ -4,14 +4,14 @@ using System.Text;
 
 namespace Gemini.Net
 {
-    public class GemiUrl :IEquatable<GemiUrl>, IComparable<GemiUrl>
+    public class GeminiUrl :IEquatable<GeminiUrl>, IComparable<GeminiUrl>
     {
         public Uri _url;
 
-        public GemiUrl(string url)
+        public GeminiUrl(string url)
             : this(new Uri(url)) { }
 
-        private GemiUrl(Uri url)
+        private GeminiUrl(Uri url)
         {
             _url = url;
             if(!_url.IsAbsoluteUri)
@@ -71,7 +71,7 @@ namespace Gemini.Net
             => NormalizedUrl;
 
         //Handles resolving relative URLs
-        public static GemiUrl MakeUrl(GemiUrl request, string foundUrl)
+        public static GeminiUrl MakeUrl(GeminiUrl request, string foundUrl)
         {
             Uri newUrl = null;
             try
@@ -81,20 +81,20 @@ namespace Gemini.Net
             {
                 return null;
             }
-            return (newUrl.Scheme == "gemini") ? new GemiUrl(newUrl) : null;
+            return (newUrl.Scheme == "gemini") ? new GeminiUrl(newUrl) : null;
         }
 
         //ultimately 2 URLs are equal if their DocID is equal
-        public bool Equals(GemiUrl other)
+        public bool Equals(GeminiUrl other)
             => other != null && DocID.Equals(other.DocID);
 
         public override bool Equals(object obj)
-            => Equals(obj as GemiUrl);
+            => Equals(obj as GeminiUrl);
 
         public override int GetHashCode()
             => DocID.GetHashCode();
 
-        public int CompareTo(GemiUrl other)
+        public int CompareTo(GeminiUrl other)
         {
             return this.NormalizedUrl.CompareTo(other.NormalizedUrl);
         }

@@ -17,10 +17,10 @@ using Gemini.Net.Utils;
 // - Deciding to download the body or not based on the MIME type. This allows crawlers
 // that are only interested in text content to move on more quickly and use less server
 // resources
-namespace Gemini.Net.Protocol
+namespace Gemini.Net
 {
 
-    public class GemiRequestor
+    public class GeminiRequestor
     {
         const int ResponseLineMaxLen = 1100;
 
@@ -42,10 +42,10 @@ namespace Gemini.Net.Protocol
         /// </summary>
         public int MaxResponseSize { get; set; } = 5 * 1024 * 1024;
 
-        public GemiResponse Request(string url)
-            => Request(new GemiUrl(url));
+        public GeminiResponse Request(string url)
+            => Request(new GeminiUrl(url));
 
-        public GemiResponse Request(GemiUrl url)
+        public GeminiResponse Request(GeminiUrl url)
         {
 
             if (!url._url.IsAbsoluteUri)
@@ -53,7 +53,7 @@ namespace Gemini.Net.Protocol
                 throw new ApplicationException("Trying to request a non-absolute URL!");
             }
 
-            var ret = new GemiResponse(url);
+            var ret = new GeminiResponse(url);
 
             AbortTimer = new Stopwatch();
             ConnectTimer = new Stopwatch();
@@ -106,10 +106,10 @@ namespace Gemini.Net.Protocol
             return true;
         }
 
-        private byte[] MakeRequestBytes(GemiUrl gurl)
+        private byte[] MakeRequestBytes(GeminiUrl gurl)
             => Encoding.UTF8.GetBytes($"gemini://{gurl.Hostname}:{gurl.Port}{gurl.Path}\r\n");
 
-        private GemiResponse ReadResponseLine(Stream stream, GemiUrl url)
+        private GeminiResponse ReadResponseLine(Stream stream, GeminiUrl url)
         {
             var respLineBuffer = new List<byte>(ResponseLineMaxLen);
             byte[] readBuffer = { 0 };
@@ -141,7 +141,7 @@ namespace Gemini.Net.Protocol
 
             //spec requires that the response line use UTF-8
             var respLine = Encoding.UTF8.GetString(respLineBuffer.ToArray());
-            return new GemiResponse(url, respLine);
+            return new GeminiResponse(url, respLine);
         }
 
         /// <summary>
@@ -174,7 +174,7 @@ namespace Gemini.Net.Protocol
             return respBytes.ToArray();
         }
 
-        private bool ShouldDownloadBody(GemiResponse resp)
+        private bool ShouldDownloadBody(GeminiResponse resp)
         {
             if(!resp.IsSuccess)
             {
