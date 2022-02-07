@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 using HashDepot;
 using System.Text;
 
@@ -11,7 +12,7 @@ namespace Gemini.Net
         public GeminiUrl(string url)
             : this(new Uri(url)) { }
 
-        private GeminiUrl(Uri url)
+        public GeminiUrl(Uri url)
         {
             _url = url;
             if(!_url.IsAbsoluteUri)
@@ -64,8 +65,26 @@ namespace Gemini.Net
             }
         }
 
+        /// <summary>
+        /// Does the URL have a query string (not just a ?, but a ? following by data)
+        /// </summary>
+        public bool HasQuery
+            => (_url.Query.Length > 1);
+
+        /// <summary>
+        /// The raw, probably URL Encoded query string, without the leading ?
+        /// </summary>
+        public string RawQuery
+            => (_url.Query.Length > 1) ? _url.Query.Substring(1) : "";
+
+        /// <summary>
+        /// The URL-decoded query string, without the leading ?
+        /// </summary>
+        public string Query
+            => WebUtility.UrlDecode(RawQuery);
+
         public string NormalizedUrl
-            => $"gemini://{Hostname}:{Port}{Path}";
+            => $"gemini://{Hostname}:{Port}{Path}{_url.Query}";
 
         public override string ToString()
             => NormalizedUrl;
