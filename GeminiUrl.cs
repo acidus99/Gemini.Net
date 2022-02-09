@@ -23,6 +23,11 @@ namespace Gemini.Net
             {
                 throw new ApplicationException("Attempting to create a non-Gemini URL!");
             }
+            //.NET 5 is parsing URLs like gemini:/foo/bar as vaid absolute URLs, and not setting a hostname, so odd
+            if(String.IsNullOrEmpty(_url.Host))
+            {
+                throw new ApplicationException("Invalid absolute URL. No hostname could be parsed!");
+            }
 
             //TODO: Add URL normalization logic per RFC 3986
             //TODO: add URL restrictions in Gemini spec (no userinfo, etc)
@@ -50,7 +55,9 @@ namespace Gemini.Net
         public string Authority => $"{Hostname}:{Port}";
 
         //TODO: handle punycode/IDN
-        public string Hostname => _url.DnsSafeHost;
+        //if you get a raw IPv6 address, DnsSafeHost removes the surround [] which you need
+        public string Hostname
+            => (_url.HostNameType == UriHostNameType.IPv6) ? _url.Host : _url.DnsSafeHost;
 
         public string Path => _url.AbsolutePath;
 
@@ -96,11 +103,11 @@ namespace Gemini.Net
             try
             {
                 newUrl = new Uri(request._url, foundUrl);
+                return (newUrl.Scheme == "gemini") ? new GeminiUrl(newUrl) : null;
             } catch(Exception)
             {
                 return null;
             }
-            return (newUrl.Scheme == "gemini") ? new GeminiUrl(newUrl) : null;
         }
 
         //ultimately 2 URLs are equal if their DocID is equal
