@@ -107,7 +107,15 @@ namespace Gemini.Net
         }
 
         private byte[] MakeRequestBytes(GeminiUrl gurl)
-            => Encoding.UTF8.GetBytes($"gemini://{gurl.Hostname}:{gurl.Port}{gurl.Path}\r\n");
+        {
+            //some server implemations are failing if you send a port that is the default
+            //yes, they should fix that, but its impacting the crawlers ability to work
+            if(gurl.Port == 1965)
+            {
+                return Encoding.UTF8.GetBytes($"gemini://{gurl.Hostname}{gurl.Path}\r\n");
+            }
+            return Encoding.UTF8.GetBytes($"gemini://{gurl.Hostname}:{gurl.Port}{gurl.Path}\r\n");
+        }             
 
         private GeminiResponse ReadResponseLine(Stream stream, GeminiUrl url)
         {
