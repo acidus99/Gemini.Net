@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Net.Security;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.IO;
 using System.Linq;
@@ -68,14 +67,14 @@ namespace Gemini.Net
                 var client = sock.Connect(url.Hostname, url.Port, 60000);
 
                 using (SslStream sslStream = new SslStream(client.GetStream(), false,
-                    new RemoteCertificateValidationCallback(ProcessServerCertificate), null))
+                    new RemoteCertificateValidationCallback(ProtocolParser.ProcessServerCertificate), null))
                 {
 
                     sslStream.ReadTimeout = 60000; //wait 45 sec
-                    sslStream.AuthenticateAsClient(url.Hostname);
+                    sslStream.AuthenticateAsClient(url.Hostname, null, System.Security.Authentication.SslProtocols.Tls12, false);
                     ConnectTimer.Stop();
 
-                    sslStream.Write(MakeRequestBytes(url));
+                    sslStream.Write(ProtocolParser.MakeRequestLine(url));
                     DownloadTimer.Start();
 
                     ret = ReadResponseLine(sslStream, url);
@@ -94,28 +93,21 @@ namespace Gemini.Net
             } catch(Exception ex)
             {
                 ret.ConnectStatus = ConnectStatus.Error;
-                ret.Meta = ex.Message;
+                ret.Meta = FormatException(ex);
                 LastException = ex;
             }
             return ret;
         }
 
-        private bool ProcessServerCertificate(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+        private string FormatException(Exception ex)
         {
-            //TODO: TOFU logic and logic to store certificate that was received...
-            return true;
-        }
-
-        private byte[] MakeRequestBytes(GeminiUrl gurl)
-        {
-            //some server implemations are failing if you send a port that is the default
-            //yes, they should fix that, but its impacting the crawlers ability to work
-            if(gurl.Port == 1965)
+            var msg = $"{ex.Message} ({ex.HResult})";
+            if(ex.InnerException != null)
             {
-                return Encoding.UTF8.GetBytes($"gemini://{gurl.Hostname}{gurl.Path}\r\n");
+                msg += " > " + FormatException(ex.InnerException);
             }
-            return Encoding.UTF8.GetBytes($"gemini://{gurl.Hostname}:{gurl.Port}{gurl.Path}\r\n");
-        }             
+            return msg;
+        }
 
         private GeminiResponse ReadResponseLine(Stream stream, GeminiUrl url)
         {

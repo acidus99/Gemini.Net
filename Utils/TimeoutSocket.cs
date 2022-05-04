@@ -9,7 +9,7 @@ namespace Gemini.Net.Utils
     /// during the connect if too much time passes
     /// 
     /// </summary>
-    internal class TimeoutSocket
+    public class TimeoutSocket
     {
         private bool IsConnectionSuccessful = false;
         private Exception socketexception;
