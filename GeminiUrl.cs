@@ -90,7 +90,6 @@ namespace Gemini.Net
         public string Query
             => WebUtility.UrlDecode(RawQuery);
 
-
         public string NormalizedUrl
             => $"gemini://{Hostname}:{Port}{Path}{_url.Query}";
 
