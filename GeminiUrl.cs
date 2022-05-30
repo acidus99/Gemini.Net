@@ -90,6 +90,12 @@ namespace Gemini.Net
         public string Query
             => WebUtility.UrlDecode(RawQuery);
 
+        // <summary>
+        /// The raw, probably URL Encoded fragment, without the leading #
+        /// </summary>
+        public string Fragment
+            => (_url.Fragment.Length > 1) ? _url.Fragment.Substring(1) : "";
+
         public string NormalizedUrl
             => $"gemini://{Hostname}:{Port}{Path}{_url.Query}";
 
