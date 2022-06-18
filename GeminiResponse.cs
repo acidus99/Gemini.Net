@@ -113,7 +113,14 @@ namespace Gemini.Net
             Meta = extraData;
             if(IsSuccess)
             {
-                MimeType = Meta;
+                /*
+                 * The original gemini spec said 
+                 * > If <META> is an empty string, the MIME type MUST default to "text/gemini; charset=utf-8".
+                 * however that is not in the more modern, up-to-date version. Adding it here for backwards support
+                 * since at last one capsule is serving content that way
+                 */
+                //only need to specify the mime, since UTF-8 is assumed to be the charset
+                MimeType = (Meta.Length > 0) ? Meta : "text/gemini";
             }
         }
 
