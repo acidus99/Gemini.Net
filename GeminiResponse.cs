@@ -54,7 +54,7 @@ namespace Gemini.Net
 
         public int DownloadTime { get; internal set; }
 
-
+        public bool IsImageResponse => HasBody && MimeType.StartsWith("image/");
         public bool IsTextResponse => HasBody && MimeType.StartsWith("text/");
 
         public bool IsInput => InStatusRange(10);
@@ -167,5 +167,11 @@ namespace Gemini.Net
         Error = 2,
     }
 
-
+    public enum ContentType : int
+    {
+        Unknown = 0,
+        Text = 1,
+        Image = 2,
+        Binary = 3,
+    }
 }
