@@ -37,6 +37,8 @@ namespace Gemini.Net
         /// </summary>
         public string MimeType { get; private set; }
 
+        public ContentType ContentType { get; internal set; } = ContentType.Unknown;
+
         /// <summary>
         /// Data about the response, whose meaning is status dependent
         /// 1x = Prompt to display user for input
@@ -121,6 +123,20 @@ namespace Gemini.Net
                  */
                 //only need to specify the mime, since UTF-8 is assumed to be the charset
                 MimeType = (Meta.Length > 0) ? Meta : "text/gemini";
+
+                //this is a back, we should do this off the body bytes with a magic file
+                if (IsTextResponse)
+                {
+                    ContentType = ContentType.Text;
+                }
+                else if (IsImageResponse)
+                {
+                    ContentType = ContentType.Image;
+                }
+                else
+                {
+                    ContentType = ContentType.Binary;
+                }
             }
         }
 
