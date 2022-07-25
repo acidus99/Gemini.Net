@@ -84,6 +84,15 @@ namespace Gemini.Net
         public string RawQuery
             => (_url.Query.Length > 1) ? _url.Query.Substring(1) : "";
 
+        //Just the root url for this host
+        public string RootUrl
+            //Some gemini servers return an error if you include the port when it is
+            //running on the default. Yes, these servers should fix that, but I don't
+            // want errors...
+            => Port == 1965 ?
+                $"gemini://{Hostname}/" :
+                $"gemini://{Hostname}{Path}:{Port}/";
+
         /// <summary>
         /// The URL-decoded query string, without the leading ?
         /// </summary>
