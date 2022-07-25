@@ -102,7 +102,7 @@ namespace Gemini.Net
             // want errors...
             => Port == 1965 ?
                 $"gemini://{Hostname}{Path}{_url.Query}" :
-                $"gemini://{Hostname}{Path}:{Port}{_url.Query}";
+                $"gemini://{Hostname}:{Port}{Path}{_url.Query}";
 
         public override string ToString()
             => NormalizedUrl;
