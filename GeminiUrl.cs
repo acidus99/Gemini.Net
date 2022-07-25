@@ -97,7 +97,12 @@ namespace Gemini.Net
             => (_url.Fragment.Length > 1) ? _url.Fragment.Substring(1) : "";
 
         public string NormalizedUrl
-            => $"gemini://{Hostname}:{Port}{Path}{_url.Query}";
+            //Some gemini servers return an error if you include the port when it is
+            //running on the default. Yes, these servers should fix that, but I don't
+            // want errors...
+            => Port == 1965 ?
+                $"gemini://{Hostname}{Path}{_url.Query}" :
+                $"gemini://{Hostname}{Path}:{Port}{_url.Query}";
 
         public override string ToString()
             => NormalizedUrl;
