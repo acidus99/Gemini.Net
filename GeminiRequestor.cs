@@ -1,11 +1,13 @@
 ﻿using System;
-using System.Net.Security;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Diagnostics;
-using System.Collections.Generic;
+using System.Net;
+using System.Net.Security;
+using System.Net.Sockets;
+using System.Security.Cryptography.X509Certificates;
+using System.Text;
 
 using Gemini.Net.Utils;
 
@@ -19,7 +21,6 @@ using Gemini.Net.Utils;
 // resources
 namespace Gemini.Net
 {
-
     public class GeminiRequestor
     {
         const int ResponseLineMaxLen = 1100;
@@ -48,8 +49,19 @@ namespace Gemini.Net
             => Request(new GeminiUrl(url));
 
         public GeminiResponse Request(GeminiUrl url)
-        {
+            => DoRequest(url, null);
 
+        /// <summary>
+        /// Make a request to a specific IP Address
+        /// </summary>
+        /// <param name="url"></param>
+        /// <param name="iPAddress"></param>
+        /// <returns></returns>
+        public GeminiResponse Request(GeminiUrl url, IPAddress iPAddress)
+            => DoRequest(url, iPAddress);
+
+        private GeminiResponse DoRequest(GeminiUrl url, IPAddress iPAddress)
+        {
             if (!url._url.IsAbsoluteUri)
             {
                 throw new ApplicationException("Trying to request a non-absolute URL!");
@@ -67,7 +79,17 @@ namespace Gemini.Net
                 var sock = new TimeoutSocket();
                 AbortTimer.Start();
                 ConnectTimer.Start();
-                var client = sock.Connect(url.Hostname, url.Port, 60000);
+
+                TcpClient client = null;
+                //if we were already provided with an IP address use that
+                if (iPAddress != null)
+                {
+                    client = sock.Connect(iPAddress, url.Port, 60000);
+                }
+                else
+                {
+                    client = sock.Connect(url.Hostname, url.Port, 60000);
+                }
 
                 using (SslStream sslStream = new SslStream(client.GetStream(), false,
                     new RemoteCertificateValidationCallback(ProcessServerCertificate), null))
