@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 
@@ -42,6 +43,35 @@ namespace Gemini.Net.Utils
                 throw new TimeoutException("TimeOut Exception");
             }
         }
+
+        public TcpClient Connect(IPAddress iPAddress, int port, int timeoutMSec)
+        {
+            TimeoutObject.Reset();
+            socketexception = null;
+
+            TcpClient tcpclient = new TcpClient();
+
+            tcpclient.BeginConnect(iPAddress, port,
+                new AsyncCallback(CallBackMethod), tcpclient);
+
+            if (TimeoutObject.WaitOne(timeoutMSec, false))
+            {
+                if (IsConnectionSuccessful)
+                {
+                    return tcpclient;
+                }
+                else
+                {
+                    throw socketexception;
+                }
+            }
+            else
+            {
+                tcpclient.Close();
+                throw new TimeoutException("TimeOut Exception");
+            }
+        }
+
         private void CallBackMethod(IAsyncResult asyncresult)
         {
             try
