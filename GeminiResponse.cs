@@ -16,7 +16,7 @@ namespace Gemini.Net
 
         public int StatusCode { get; private set; }
 
-        public ConnectStatus ConnectStatus { get; internal set; }
+        public ConnectStatus ConnectStatus { get; set; }
 
         /// <summary>
         /// Did we deliberately skip the body?
@@ -47,7 +47,7 @@ namespace Gemini.Net
         /// 4x, 5x, or 6x = Error Message
         /// Also gets set if we hit a connection error
         /// </summary>
-        public string Meta { get; internal set; }
+        public string Meta { get; set; }
 
         /// <summary>
         /// Latency of the request/resp, in ms
@@ -71,7 +71,7 @@ namespace Gemini.Net
 
         public int BodySize => HasBody ? BodyBytes.Length : 0;
 
-        internal GeminiResponse(GeminiUrl url)
+        public GeminiResponse(GeminiUrl url)
         {
             RequestUrl = url;
             ConnectStatus = ConnectStatus.Error;
