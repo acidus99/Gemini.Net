@@ -124,7 +124,8 @@ namespace Gemini.Net
             {
                 newUrl = new Uri(request._url, foundUrl);
                 return (newUrl.Scheme == "gemini") ? new GeminiUrl(newUrl) : null;
-            } catch(Exception)
+            }
+            catch (Exception)
             {
                 return null;
             }
