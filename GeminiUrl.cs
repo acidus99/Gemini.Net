@@ -38,7 +38,7 @@ namespace Gemini.Net
         /// <summary>
         /// Get DocID from a URL. This happens by normalizing the URL and hashing it
         /// </summary>
-        public ulong DocID
+        public ulong HashID
         {
             get
             {
@@ -133,13 +133,13 @@ namespace Gemini.Net
 
         //ultimately 2 URLs are equal if their DocID is equal
         public bool Equals(GeminiUrl other)
-            => other != null && DocID.Equals(other.DocID);
+            => other != null && HashID.Equals(other.HashID);
 
         public override bool Equals(object obj)
             => Equals(obj as GeminiUrl);
 
         public override int GetHashCode()
-            => DocID.GetHashCode();
+            => HashID.GetHashCode();
 
         public int CompareTo(GeminiUrl other)
         {
