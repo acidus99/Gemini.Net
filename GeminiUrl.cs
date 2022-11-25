@@ -33,7 +33,7 @@ namespace Gemini.Net
             //TODO: add URL restrictions in Gemini spec (no userinfo, etc)
         }
 
-        private ulong? docID;
+        private ulong? hashID;
 
         /// <summary>
         /// Get DocID from a URL. This happens by normalizing the URL and hashing it
@@ -42,11 +42,11 @@ namespace Gemini.Net
         {
             get
             {
-                if (!docID.HasValue)
+                if (!hashID.HasValue)
                 {
-                    docID = XXHash.Hash64(Encoding.UTF8.GetBytes(NormalizedUrl));
+                    hashID = XXHash.Hash64(Encoding.UTF8.GetBytes(NormalizedUrl));
                 }
-                return docID.Value;
+                return hashID.Value;
             }
         }
 
