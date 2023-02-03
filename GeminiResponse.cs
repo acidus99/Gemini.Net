@@ -7,37 +7,35 @@ namespace Gemini.Net
     public class GeminiResponse
     {
 
-        public GeminiUrl RequestUrl { get; private set; }
+        public GeminiUrl RequestUrl { get; protected set; }
 
         /// <summary>
         /// The full raw response line from the server. [status][0x20][meta][CR][LF]
         /// </summary>
-        public string ResponseLine { get; private set; }
+        public string ResponseLine { get; protected set; }
 
-        public int StatusCode { get; private set; }
+        public int StatusCode { get; protected set; }
 
         public ConnectStatus ConnectStatus { get; set; }
 
         /// <summary>
         /// Did we deliberately skip the body?
         /// </summary>
-        public bool BodySkipped { get; internal set; }
+        public bool BodySkipped { get; set; }
 
-        public byte[] BodyBytes { get; private set; }
+        public byte[] BodyBytes { get; protected set; }
 
         public uint BodyHash
             => (HasBody) ? XXHash.Hash32(BodyBytes) : 0;
 
-        public string BodyText { get; private set; }
+        public string BodyText { get; protected set; }
 
         public bool HasBody => (BodyBytes?.Length > 0);
 
         /// <summary>
         /// The complete MIME Type, sent by the server for 2x responses
         /// </summary>
-        public string MimeType { get; private set; }
-
-        public ContentType ContentType { get; internal set; } = ContentType.Unknown;
+        public string MimeType { get; protected set; }
 
         /// <summary>
         /// Data about the response, whose meaning is status dependent
@@ -52,9 +50,9 @@ namespace Gemini.Net
         /// <summary>
         /// Latency of the request/resp, in ms
         /// </summary>
-        public int ConnectTime { get; internal set; }
+        public int ConnectTime { get; set; }
 
-        public int DownloadTime { get; internal set; }
+        public int DownloadTime { get; set; }
 
         public bool IsImageResponse => HasBody && MimeType.StartsWith("image/");
         public bool IsTextResponse => HasBody && MimeType.StartsWith("text/");
@@ -71,7 +69,7 @@ namespace Gemini.Net
 
         public int BodySize => HasBody ? BodyBytes.Length : 0;
 
-        public GeminiResponse(GeminiUrl url)
+        public GeminiResponse(GeminiUrl url = null)
         {
             RequestUrl = url;
             ConnectStatus = ConnectStatus.Error;
@@ -123,20 +121,6 @@ namespace Gemini.Net
                  */
                 //only need to specify the mime, since UTF-8 is assumed to be the charset
                 MimeType = (Meta.Length > 0) ? Meta : "text/gemini";
-
-                //this is a back, we should do this off the body bytes with a magic file
-                if (IsTextResponse)
-                {
-                    ContentType = ContentType.Text;
-                }
-                else if (IsImageResponse)
-                {
-                    ContentType = ContentType.Image;
-                }
-                else
-                {
-                    ContentType = ContentType.Binary;
-                }
             }
         }
 
@@ -181,13 +165,5 @@ namespace Gemini.Net
         Unknown = 0,
         Success = 1,
         Error = 2,
-    }
-
-    public enum ContentType : int
-    {
-        Unknown = 0,
-        Text = 1,
-        Image = 2,
-        Binary = 3,
     }
 }
