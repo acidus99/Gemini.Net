@@ -40,6 +40,12 @@ namespace Gemini.Net
         /// </summary>
         public int AbortTimeout { get; set; } = 30 * 1000;
 
+
+        /// <summary>
+        /// Amount of time, in ms, to wait before aborting the request or download
+        /// </summary>
+        public int ConnectionTimeout { get; set; } = 30 * 1000;
+
         /// <summary>
         /// Maximum amount of data to download for the response body, before aborting
         /// </summary>
@@ -84,18 +90,18 @@ namespace Gemini.Net
                 //if we were already provided with an IP address use that
                 if (iPAddress != null)
                 {
-                    client = sock.Connect(iPAddress, url.Port, 60000);
+                    client = sock.Connect(iPAddress, url.Port, ConnectionTimeout);
                 }
                 else
                 {
-                    client = sock.Connect(url.Hostname, url.Port, 60000);
+                    client = sock.Connect(url.Hostname, url.Port, ConnectionTimeout);
                 }
 
                 using (SslStream sslStream = new SslStream(client.GetStream(), false,
                     new RemoteCertificateValidationCallback(ProcessServerCertificate), null))
                 {
 
-                    sslStream.ReadTimeout = 60000; //wait 45 sec
+                    sslStream.ReadTimeout = AbortTimeout;
                     sslStream.AuthenticateAsClient(url.Hostname);
                     ConnectTimer.Stop();
 
