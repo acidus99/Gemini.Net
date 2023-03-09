@@ -91,7 +91,7 @@ namespace Gemini.Net
             // want errors...
             => Port == 1965 ?
                 $"gemini://{Hostname}/" :
-                $"gemini://{Hostname}{Path}:{Port}/";
+                $"gemini://{Hostname}:{Port}/";
 
         /// <summary>
         /// The URL-decoded query string, without the leading ?
