@@ -35,9 +35,6 @@ namespace Gemini.Net
 
         private long? urlID;
 
-        public long ProperID
-            => unchecked((long) HashID);
-
         /// <summary>
         /// Get DocID from a URL. This happens by normalizing the URL and hashing it
         /// </summary>
