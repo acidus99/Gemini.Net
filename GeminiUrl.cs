@@ -35,6 +35,9 @@ namespace Gemini.Net
 
         private ulong? hashID;
 
+        public long ProperID
+            => unchecked((long) HashID);
+
         /// <summary>
         /// Get DocID from a URL. This happens by normalizing the URL and hashing it
         /// </summary>
@@ -129,6 +132,24 @@ namespace Gemini.Net
             {
                 return null;
             }
+        }
+
+        //Handles normal urls
+        public static GeminiUrl MakeUrl(string url)
+        {
+            Uri newUrl = null;
+            try
+            {
+                newUrl = new Uri(url);
+                if (newUrl.IsAbsoluteUri && newUrl.Scheme == "gemini")
+                {
+                    return new GeminiUrl(newUrl);
+                }
+            }
+            catch (Exception)
+            {
+            }
+            return null;
         }
 
         //ultimately 2 URLs are equal if their DocID is equal
