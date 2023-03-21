@@ -33,7 +33,7 @@ namespace Gemini.Net
             //TODO: add URL restrictions in Gemini spec (no userinfo, etc)
         }
 
-        private ulong? hashID;
+        private long? urlID;
 
         public long ProperID
             => unchecked((long) HashID);
@@ -41,15 +41,16 @@ namespace Gemini.Net
         /// <summary>
         /// Get DocID from a URL. This happens by normalizing the URL and hashing it
         /// </summary>
-        public ulong HashID
+        public long ID
         {
             get
             {
-                if (!hashID.HasValue)
+                if (!urlID.HasValue)
                 {
-                    hashID = XXHash.Hash64(Encoding.UTF8.GetBytes(NormalizedUrl));
+                    var hash = XXHash.Hash64(Encoding.UTF8.GetBytes(NormalizedUrl));
+                    urlID = unchecked((long)hash);
                 }
-                return hashID.Value;
+                return urlID.Value;
             }
         }
 
@@ -154,13 +155,13 @@ namespace Gemini.Net
 
         //ultimately 2 URLs are equal if their DocID is equal
         public bool Equals(GeminiUrl other)
-            => other != null && HashID.Equals(other.HashID);
+            => other != null && ID.Equals(other.ID);
 
         public override bool Equals(object obj)
             => Equals(obj as GeminiUrl);
 
         public override int GetHashCode()
-            => HashID.GetHashCode();
+            => ID.GetHashCode();
 
         public int CompareTo(GeminiUrl other)
         {
