@@ -57,15 +57,12 @@ namespace Gemini.Net
         public bool IsImageResponse => HasBody && MimeType.StartsWith("image/");
         public bool IsTextResponse => HasBody && MimeType.StartsWith("text/");
 
-        public bool IsInput => InStatusRange(10);
-        public bool IsSuccess => InStatusRange(20);
-        public bool IsRedirect => InStatusRange(30);
-        public bool IsTempFail => InStatusRange(40);
-        public bool IsPermFail => InStatusRange(50);
-        public bool IsAuth => InStatusRange(60);
-
-        private bool InStatusRange(int low)
-            => (StatusCode >= low && StatusCode<= low + 9);
+        public bool IsInput => GeminiParser.IsInputStatus(StatusCode);
+        public bool IsSuccess => GeminiParser.IsSuccessStatus(StatusCode);
+        public bool IsRedirect => GeminiParser.IsRedirectStatus(StatusCode);
+        public bool IsTempFail => GeminiParser.IsTempFailStatus(StatusCode);
+        public bool IsPermFail => GeminiParser.IsPermFailStatus(StatusCode);
+        public bool IsAuth => GeminiParser.IsAuthStatus(StatusCode);
 
         public int BodySize => HasBody ? BodyBytes.Length : 0;
 
@@ -165,5 +162,6 @@ namespace Gemini.Net
         Unknown = 0,
         Success = 1,
         Error = 2,
+        Skipped = 3,
     }
 }
