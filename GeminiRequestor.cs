@@ -73,6 +73,9 @@ namespace Gemini.Net
                 throw new ApplicationException("Trying to request a non-absolute URL!");
             }
 
+            DateTime? requestSent = null;
+            DateTime? responseReceived = null;
+
             var ret = new GeminiResponse(url);
 
             AbortTimer = new Stopwatch();
@@ -85,6 +88,8 @@ namespace Gemini.Net
                 var sock = new TimeoutSocket();
                 AbortTimer.Start();
                 ConnectTimer.Start();
+
+                requestSent = DateTime.Now;
 
                 TcpClient client = null;
                 //if we were already provided with an IP address use that
@@ -110,6 +115,7 @@ namespace Gemini.Net
 
                     ret = ReadResponseLine(sslStream, url);
                     ret.ConnectTime = (int)ConnectTimer.ElapsedMilliseconds;
+                    responseReceived = DateTime.Now;
 
                     //We don't need to download the body if we don't like the mime type
                     if (ShouldDownloadBody(ret))
@@ -121,12 +127,16 @@ namespace Gemini.Net
                     }
                 }
                 client.Close();
-            } catch(Exception ex)
+            }
+            catch(Exception ex)
             {
                 ret.ConnectStatus = ConnectStatus.Error;
                 ret.Meta = ex.Message;
                 LastException = ex;
             }
+            ret.RequestSent = requestSent ?? DateTime.Now;
+            ret.ResponseReceived = responseReceived ?? DateTime.Now;
+
             return ret;
         }
 
@@ -188,8 +198,19 @@ namespace Gemini.Net
 
             //spec requires that the response line use UTF-8
             var respLine = Encoding.UTF8.GetString(respLineBuffer.ToArray());
+            respLine = CleanLegacyResponseLne(respLine);
             return new GeminiResponse(url, respLine);
         }
+
+        /// <summary>
+        /// Early Gemini systems that used a tab between the status and the META. Clean that
+        /// </summary>
+        /// <param name="line"></param>
+        /// <returns></returns>
+        private static string CleanLegacyResponseLne(string line)
+            => line.Replace('\t', ' ');
+
+
 
         /// <summary>
         /// Reads the response body. Aborts if timeout or max size is exceeded
