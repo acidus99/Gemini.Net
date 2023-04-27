@@ -1,13 +1,17 @@
 ﻿using System;
 using System.Text;
+
+using System.Net.Mime;
 using HashDepot;
 
 namespace Gemini.Net
 {
     public class GeminiResponse
     {
+        public GeminiUrl RequestUrl { get; set; }
+        public DateTime? RequestSent { get; set; }
 
-        public GeminiUrl RequestUrl { get; protected set; }
+        public DateTime? ResponseReceived { get; set; }
 
         /// <summary>
         /// The full raw response line from the server. [status][0x20][meta][CR][LF]
@@ -36,6 +40,8 @@ namespace Gemini.Net
         /// The complete MIME Type, sent by the server for 2x responses
         /// </summary>
         public string MimeType { get; protected set; }
+
+        public string Charset { get; protected set; }
 
         /// <summary>
         /// Data about the response, whose meaning is status dependent
@@ -70,7 +76,7 @@ namespace Gemini.Net
         {
             RequestUrl = url;
             ConnectStatus = ConnectStatus.Error;
-            StatusCode = 0;
+            StatusCode = 49; //by default, we use a temporary error code
             MimeType = "";
             Meta = "";
             ConnectTime = 0;
@@ -117,7 +123,31 @@ namespace Gemini.Net
                  * since at last one capsule is serving content that way
                  */
                 //only need to specify the mime, since UTF-8 is assumed to be the charset
-                MimeType = (Meta.Length > 0) ? Meta : "text/gemini";
+                if (Meta.Length == 0)
+                {
+                    MimeType = "text/gemini";
+                }
+                else
+                {
+                    try
+                    {
+                        var contentType = new ContentType(Meta);
+                        MimeType = contentType.MediaType;
+                        if (MimeType.StartsWith("text/"))
+                        {
+                            Charset = contentType.CharSet;
+                            int x = 4;
+                        }
+                    }
+                    catch (FormatException)
+                    {
+                        //could be a malformed lang attribute with multiple langs. just snip any params
+                        int paramIndex = Meta.IndexOf(";");
+                        MimeType = (paramIndex > 0) ?
+                            Meta.Substring(0, paramIndex) :
+                            Meta;
+                    }
+                }
             }
         }
 
