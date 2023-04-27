@@ -135,8 +135,7 @@ namespace Gemini.Net
                         MimeType = contentType.MediaType;
                         if (MimeType.StartsWith("text/"))
                         {
-                            Charset = contentType.CharSet;
-                            int x = 4;
+                            Charset = contentType.CharSet.ToLower();
                         }
                     }
                     catch (FormatException)
@@ -159,11 +158,13 @@ namespace Gemini.Net
 
                 if (IsTextResponse)
                 {
-                    //TODO add charset parsing here
-                    BodyText = Encoding.UTF8.GetString(BodyBytes);
+                    BodyText = GetEncoding().GetString(BodyBytes);
                 }
             }
         }
+
+        private Encoding GetEncoding()
+            => Encoding.GetEncoding((Charset == null) ? "utf-8" : Charset);
 
         public override string ToString()
         {
