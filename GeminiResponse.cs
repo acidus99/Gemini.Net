@@ -9,28 +9,24 @@ namespace Gemini.Net
     public class GeminiResponse
     {
         public GeminiUrl RequestUrl { get; set; }
-        public DateTime? RequestSent { get; set; }
+        public DateTime RequestSent { get; set; } = DateTime.Now;
 
-        public DateTime? ResponseReceived { get; set; }
+        public DateTime ResponseReceived { get; set; } = DateTime.Now;
 
         /// <summary>
         /// The full raw response line from the server. [status][0x20][meta][CR][LF]
         /// </summary>
         public string ResponseLine { get; protected set; }
 
-        public int StatusCode { get; protected set; }
+        public int StatusCode { get; set; }
 
-        public ConnectStatus ConnectStatus { get; set; }
-
-        /// <summary>
-        /// Did we deliberately skip the body?
-        /// </summary>
-        public bool BodySkipped { get; set; }
+        public bool IsConnectionError => (StatusCode == GeminiParser.ConnectionErrorStatusCode);
+        public bool IsAvailable => !IsConnectionError;
 
         public byte[] BodyBytes { get; protected set; }
 
-        public uint BodyHash
-            => (HasBody) ? XXHash.Hash32(BodyBytes) : 0;
+        public uint? BodyHash
+            => (HasBody) ? XXHash.Hash32(BodyBytes): null;
 
         public string BodyText { get; protected set; }
 
@@ -66,29 +62,30 @@ namespace Gemini.Net
         public bool IsInput => GeminiParser.IsInputStatus(StatusCode);
         public bool IsSuccess => GeminiParser.IsSuccessStatus(StatusCode);
         public bool IsRedirect => GeminiParser.IsRedirectStatus(StatusCode);
+
+        public bool IsFail => IsTempFail || IsTempFail;
+
         public bool IsTempFail => GeminiParser.IsTempFailStatus(StatusCode);
         public bool IsPermFail => GeminiParser.IsPermFailStatus(StatusCode);
         public bool IsAuth => GeminiParser.IsAuthStatus(StatusCode);
 
         public int BodySize => HasBody ? BodyBytes.Length : 0;
 
+        public bool IsBodyTruncated { get; set; } = false;
+
         public GeminiResponse(GeminiUrl url = null)
         {
             RequestUrl = url;
-            ConnectStatus = ConnectStatus.Error;
-            StatusCode = 49; //by default, we use a temporary error code
+            StatusCode = GeminiParser.ConnectionErrorStatusCode;
             MimeType = "";
             Meta = "";
             ConnectTime = 0;
             DownloadTime = 0;
-            BodySkipped = false;
         }
 
         public GeminiResponse(GeminiUrl url, string responseLine)
         {
             RequestUrl = url;
-
-            ConnectStatus = ConnectStatus.Success;
             ResponseLine = responseLine;
 
             int x = responseLine.IndexOf(' ');
@@ -135,7 +132,7 @@ namespace Gemini.Net
                         MimeType = contentType.MediaType;
                         if (MimeType.StartsWith("text/"))
                         {
-                            Charset = contentType.CharSet.ToLower();
+                            Charset = contentType.CharSet?.ToLower();
                         }
                     }
                     catch (FormatException)
@@ -182,17 +179,5 @@ namespace Gemini.Net
             return s;
         }
 
-    }
-
-    /// <summary>
-    /// Status of the network connection made for a Gemini request.
-    /// Used to show errors at the network level vs protocol level
-    /// </summary>
-    public enum ConnectStatus : int
-    {
-        Unknown = 0,
-        Success = 1,
-        Error = 2,
-        Skipped = 3,
     }
 }
