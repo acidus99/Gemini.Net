@@ -8,6 +8,12 @@ namespace Gemini.Net
 {
     public class GeminiResponse
     {
+
+        static GeminiResponse()
+        {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        }
+
         public GeminiUrl RequestUrl { get; set; }
         public DateTime RequestSent { get; set; } = DateTime.Now;
 
