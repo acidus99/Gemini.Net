@@ -31,15 +31,12 @@ namespace Gemini.Net
         Stopwatch DownloadTimer;
         Stopwatch AbortTimer;
 
-        public bool OnlyDownloadText { get; set; } = false;
-
         public bool IncludeFragment { get; set; } = false;
 
         /// <summary>
         /// Amount of time, in ms, to wait before aborting the request or download
         /// </summary>
         public int AbortTimeout { get; set; } = 30 * 1000;
-
 
         /// <summary>
         /// Amount of time, in ms, to wait before aborting the request or download
@@ -117,12 +114,14 @@ namespace Gemini.Net
                     ret.ConnectTime = (int)ConnectTimer.ElapsedMilliseconds;
                     responseReceived = DateTime.Now;
 
-                    //We don't need to download the body if we don't like the mime type
-                    if (ShouldDownloadBody(ret))
+                    //there is only a body to download if this was a success
+                    if (ret.IsSuccess)
                     {
-                        var bodyBytes = ReadBody(sslStream);
+                        bool isTruncated = false;
+                        var bodyBytes = ReadBody(sslStream, out isTruncated);
 
                         ret.DownloadTime = (int)DownloadTimer.ElapsedMilliseconds;
+                        ret.IsBodyTruncated = isTruncated;
                         ret.ParseBody(bodyBytes);
                     }
                 }
@@ -130,12 +129,12 @@ namespace Gemini.Net
             }
             catch(Exception ex)
             {
-                ret.ConnectStatus = ConnectStatus.Error;
+                ret.StatusCode = GeminiParser.ConnectionErrorStatusCode;
                 ret.Meta = ex.Message;
                 LastException = ex;
             }
-            ret.RequestSent = requestSent ?? DateTime.Now;
-            ret.ResponseReceived = responseReceived ?? DateTime.Now;
+            ret.RequestSent = requestSent ?? ret.RequestSent;
+            ret.ResponseReceived = responseReceived ?? ret.RequestSent;
 
             return ret;
         }
@@ -210,17 +209,16 @@ namespace Gemini.Net
         private static string CleanLegacyResponseLne(string line)
             => line.Replace('\t', ' ');
 
-
-
         /// <summary>
         /// Reads the response body. Aborts if timeout or max size is exceeded
         /// </summary>
         /// <param name="stream"></param>
         /// <returns>response body bytes</returns>
-        private byte[] ReadBody(Stream stream)
+        private byte[] ReadBody(Stream stream, out bool isTruncated)
         {
             var respBytes = new List<byte>(10 * 1024);
             var readBuffer = new byte[4096];
+            isTruncated = false;
 
             int readCount = 0;
             do
@@ -232,7 +230,8 @@ namespace Gemini.Net
                 }
                 if (respBytes.Count > MaxResponseSize)
                 {
-                    throw new ApplicationException($"Requestor aborting due to reaching max download size {MaxResponseSize}.");
+                    isTruncated = true;
+                    break;
                 }
                 CheckAbortTimeout();
             }
@@ -240,20 +239,6 @@ namespace Gemini.Net
 
             DownloadTimer.Stop();
             return respBytes.ToArray();
-        }
-
-        private bool ShouldDownloadBody(GeminiResponse resp)
-        {
-            if(!resp.IsSuccess)
-            {
-                return false;
-            }
-            if (OnlyDownloadText && !resp.MimeType.StartsWith("text/"))
-            {
-                resp.BodySkipped = true;
-                return false;
-            }
-            return true;
         }
 
         private void CheckAbortTimeout()

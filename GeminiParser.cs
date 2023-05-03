@@ -20,6 +20,13 @@ namespace Gemini.Net;
 public static class GeminiParser
 {
 
+    /// <summary>
+    /// We use status code 49 for any connection-related errors. (e.g. DNS failure, no port listening, TLS failure, timeout failure, etc)
+    /// The exact error message will appear in the meta line.
+    /// This ensures all Gemini responses have a status code
+    /// </summary>
+    public const int ConnectionErrorStatusCode = 49;
+
     public static bool IsInputStatus(int statusCode) => InStatusRange(statusCode, 10);
     public static bool IsSuccessStatus(int statusCode) => InStatusRange(statusCode, 20);
     public static bool IsRedirectStatus(int statusCode) => InStatusRange(statusCode, 30);
