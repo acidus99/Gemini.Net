@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.Text;
 
 using System.Net.Mime;
@@ -44,6 +45,8 @@ namespace Gemini.Net
         public string MimeType { get; protected set; }
 
         public string Charset { get; protected set; }
+
+        public string Language { get; protected set; }
 
         /// <summary>
         /// Data about the response, whose meaning is status dependent
@@ -139,6 +142,7 @@ namespace Gemini.Net
                         if (MimeType.StartsWith("text/"))
                         {
                             Charset = contentType.CharSet?.ToLower();
+                            Language = GetLanugage(contentType);
                         }
                     }
                     catch (FormatException)
@@ -151,6 +155,21 @@ namespace Gemini.Net
                     }
                 }
             }
+        }
+
+        private string GetLanugage(ContentType parsedType)
+        {
+            if(parsedType.Parameters.ContainsKey("lang"))
+            {
+                try
+                {
+                    CultureInfo info = new CultureInfo(parsedType.Parameters["lang"]);
+                    return info.TwoLetterISOLanguageName;
+                } catch(CultureNotFoundException)
+                {
+                }
+            }
+            return null;
         }
 
         public void ParseBody(byte[] body)
