@@ -73,6 +73,9 @@ namespace Gemini.Net
             }
         }
 
+        public string Protocol
+            => _url.Scheme;
+
         /// <summary>
         /// Does the URL have a query string (not just a ?, but a ? following by data)
         /// </summary>
