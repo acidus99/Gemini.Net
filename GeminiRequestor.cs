@@ -119,6 +119,7 @@ namespace Gemini.Net
                     {
                         bool isTruncated = false;
                         var bodyBytes = ReadBody(sslStream, out isTruncated);
+                        ret.IsBodyTruncated = isTruncated;
 
                         ret.DownloadTime = (int)DownloadTimer.ElapsedMilliseconds;
                         ret.IsBodyTruncated = isTruncated;
