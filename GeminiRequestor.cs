@@ -144,8 +144,6 @@ namespace Gemini.Net
             return true;
         }
 
-        
-
         private GeminiResponse ReadResponseLine(Stream stream, GeminiUrl url)
         {
             var respLineBuffer = new List<byte>(ResponseLineMaxLen);
