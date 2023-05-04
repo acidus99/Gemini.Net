@@ -87,6 +87,9 @@ public static class GeminiParser
         return ret;
     }
 
+    public static byte[] RequestBytes(GeminiUrl url)
+        => Encoding.UTF8.GetBytes($"{url}\r\n");
+
     /// <summary>
     /// Early Gemini systems that used a tab between the status and the META. Clean that
     /// </summary>

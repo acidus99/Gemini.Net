@@ -31,8 +31,6 @@ namespace Gemini.Net
         Stopwatch DownloadTimer;
         Stopwatch AbortTimer;
 
-        public bool IncludeFragment { get; set; } = false;
-
         /// <summary>
         /// Amount of time, in ms, to wait before aborting the request or download
         /// </summary>
@@ -146,25 +144,7 @@ namespace Gemini.Net
             return true;
         }
 
-        private byte[] MakeRequestBytes(GeminiUrl gurl)
-        {
-            var sb = new StringBuilder();
-            sb.Append($"gemini://{gurl.Hostname}");
-            //some server implemations are failing if you send a port that is the default
-            //yes, they should fix that, but its impacting the crawlers ability to work
-            if(gurl.Port != 1965)
-            {
-                sb.Append($":{gurl.Port}");
-            }
-            sb.Append(gurl.Path);
-            sb.Append(gurl._url.Query);
-            if(IncludeFragment && gurl.Fragment.Length > 0)
-            {
-                sb.Append($"#{gurl.Fragment}");
-            }
-            sb.Append("\r\n");
-            return Encoding.UTF8.GetBytes(sb.ToString());
-        }             
+        
 
         private GeminiResponse ReadResponseLine(Stream stream, GeminiUrl url)
         {
