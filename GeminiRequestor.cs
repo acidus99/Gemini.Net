@@ -105,7 +105,7 @@ namespace Gemini.Net
                     sslStream.AuthenticateAsClient(url.Hostname);
                     ConnectTimer.Stop();
 
-                    sslStream.Write(MakeRequestBytes(url));
+                    sslStream.Write(GeminiParser.RequestBytes(url));
                     DownloadTimer.Start();
 
                     ret = ReadResponseLine(sslStream, url);
