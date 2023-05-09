@@ -143,15 +143,19 @@ namespace Gemini.Net
                         {
                             Charset = contentType.CharSet?.ToLower();
                             Language = GetLanugage(contentType);
+                            //force geting the encoding to valid it
+                            GetEncoding();
                         }
                     }
-                    catch (FormatException)
+                    catch (Exception)
                     {
                         //could be a malformed lang attribute with multiple langs. just snip any params
                         int paramIndex = Meta.IndexOf(";");
                         MimeType = (paramIndex > 0) ?
                             Meta.Substring(0, paramIndex) :
                             Meta;
+                        Charset = null;
+                        Language = null;
                     }
                 }
             }
