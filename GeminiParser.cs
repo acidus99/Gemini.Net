@@ -45,7 +45,7 @@ public static class GeminiParser
     /// <returns></returns>
     /// <exception cref="ArgumentNullException"></exception>
     /// <exception cref="ArgumentException"></exception>
-    public static GeminiResponse ParseBytes(GeminiUrl url,  byte [] response)
+    public static GeminiResponse ParseResponseBytes(GeminiUrl url,  byte [] response)
     {
         if(url == null)
         {
@@ -87,8 +87,26 @@ public static class GeminiParser
         return ret;
     }
 
-    public static byte[] RequestBytes(GeminiUrl url)
-        => Encoding.UTF8.GetBytes($"{url}\r\n");
+    public static byte[] CreateRequestBytes(GeminiUrl url)
+        => ToBytes($"{url}\r\n");
+
+    public static byte[] CreateResponseBytes(GeminiResponse geminiResponse)
+          => CreateResponseBytes(geminiResponse.StatusCode, geminiResponse.Meta, geminiResponse.BodyBytes);
+
+    public static byte[] CreateResponseBytes(int statusCode, string meta, byte[]? bodyBytes)
+    {
+        byte[] fullResponseBytes = ToBytes($"{statusCode} {meta}\r\n");
+
+        if (bodyBytes != null && bodyBytes.Length > 0)
+        {
+            fullResponseBytes = fullResponseBytes.Concat(bodyBytes).ToArray();
+        }
+        return fullResponseBytes;
+    }
+
+    private static byte[] ToBytes(string s)
+        => Encoding.UTF8.GetBytes(s);
+
 
     /// <summary>
     /// Early Gemini systems that used a tab between the status and the META. Clean that
