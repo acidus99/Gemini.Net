@@ -35,7 +35,25 @@ namespace Gemini.Net
         public uint? BodyHash
             => (HasBody) ? XXHash.Hash32(BodyBytes): null;
 
-        public string BodyText { get; protected set; }
+        private string bodyText = null;
+
+        public string BodyText
+        {
+            get
+            {
+                if (bodyText == null)
+                {
+                    if (IsTextResponse)
+                    {
+                        bodyText = GetEncoding().GetString(BodyBytes);
+                    } else
+                    {
+                        bodyText = "";
+                    }
+                }
+                return bodyText;
+            }
+        }
 
         public bool HasBody => (BodyBytes?.Length > 0);
 
@@ -182,10 +200,7 @@ namespace Gemini.Net
             {
                 BodyBytes = body;
 
-                if (IsTextResponse)
-                {
-                    BodyText = GetEncoding().GetString(BodyBytes);
-                }
+              
             }
         }
 
