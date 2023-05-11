@@ -79,9 +79,6 @@ namespace Gemini.Net
 
         public int DownloadTime { get; set; }
 
-        public bool IsImageResponse => HasBody && MimeType.StartsWith("image/");
-        public bool IsTextResponse => HasBody && MimeType.StartsWith("text/");
-
         public bool IsInput => GeminiParser.IsInputStatus(StatusCode);
         public bool IsSuccess => GeminiParser.IsSuccessStatus(StatusCode);
         public bool IsRedirect => GeminiParser.IsRedirectStatus(StatusCode);
@@ -195,8 +192,6 @@ namespace Gemini.Net
             if (body.Length > 0)
             {
                 BodyBytes = body;
-
-              
             }
         }
 
@@ -205,19 +200,12 @@ namespace Gemini.Net
 
         public override string ToString()
         {
-            var s = ResponseLine;
-            if(IsSuccess)
+            var ret = ResponseLine;
+            if (HasBody)
             {
-                if (IsTextResponse)
-                {
-                    s += "\n" + BodyText;
-                } else
-                {
-                    s += $"\nBinary data ({BodyBytes.Length} bytes)";
-                }
+                ret += $" [{BodyBytes.Length} body bytes]";
             }
-            return s;
+            return ret;
         }
-
     }
 }
