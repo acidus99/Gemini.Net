@@ -129,7 +129,7 @@ namespace Gemini.Net
             catch(Exception ex)
             {
                 ret.StatusCode = GeminiParser.ConnectionErrorStatusCode;
-                ret.Meta = ex.Message;
+                ret.Meta = ex.Message.Trim();
                 LastException = ex;
             }
             ret.RequestSent = requestSent ?? ret.RequestSent;
