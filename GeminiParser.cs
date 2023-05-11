@@ -11,6 +11,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
 using Gemini.Net.Utils;
+using HashDepot;
 
 namespace Gemini.Net;
 
@@ -103,6 +104,25 @@ public static class GeminiParser
         }
         return fullResponseBytes;
     }
+
+    /// <summary>
+    /// Gets a hash of the entire response. Used when looking to see if a URL's contents have changed
+    /// </summary>
+    /// <param name="bytes"></param>
+    /// <returns></returns>
+    public static long GetResponseHash(byte[] bytes)
+    {
+        //want signed long
+        return unchecked((long)XXHash.Hash64(bytes));
+    }
+
+    /// <summary>
+    /// Gets a hash of the entire response. Used when looking to see if a URL's contents have changed
+    /// </summary>
+    /// <param name="bytes"></param>
+    /// <returns></returns>
+    public static long GetResponseHash(GeminiResponse response)
+        => GetResponseHash(CreateResponseBytes(response));
 
     private static byte[] ToBytes(string s)
         => Encoding.UTF8.GetBytes(s);
