@@ -43,13 +43,9 @@ namespace Gemini.Net
             {
                 if (bodyText == null)
                 {
-                    if (IsTextResponse)
-                    {
-                        bodyText = GetEncoding().GetString(BodyBytes);
-                    } else
-                    {
-                        bodyText = "";
-                    }
+                    bodyText = (HasBody) ?
+                        GetEncoding().GetString(BodyBytes) :
+                        "";
                 }
                 return bodyText;
             }
