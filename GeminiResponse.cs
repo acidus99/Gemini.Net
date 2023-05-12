@@ -119,7 +119,7 @@ namespace Gemini.Net
         public bool IsSuccess => GeminiParser.IsSuccessStatus(StatusCode);
         public bool IsRedirect => GeminiParser.IsRedirectStatus(StatusCode);
 
-        public bool IsFail => IsTempFail || IsTempFail;
+        public bool IsFail => IsTempFail || IsPermFail;
 
         public bool IsTempFail => GeminiParser.IsTempFailStatus(StatusCode);
         public bool IsPermFail => GeminiParser.IsPermFailStatus(StatusCode);
