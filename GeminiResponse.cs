@@ -36,7 +36,7 @@ namespace Gemini.Net
         private long? bodyHash;
 
         /// <summary>
-        /// Hash of just the Body (if it exists)
+        /// Hash of just the Body (if it exists).
         /// </summary>
         public long? BodyHash
         {
@@ -51,6 +51,23 @@ namespace Gemini.Net
                     bodyHash = GeminiParser.GetResponseHash(BodyBytes);
                 }
                 return bodyHash;
+            }
+        }
+
+        private long? hash;
+
+        /// <summary>
+        /// Hash of the entire response (response line + optional body)
+        /// </summary>
+        public long Hash
+        {
+            get
+            {
+                if(hash == null)
+                {
+                    hash = GeminiParser.GetResponseHash(this);
+                }
+                return hash.Value;
             }
         }
 
