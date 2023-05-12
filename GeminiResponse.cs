@@ -9,7 +9,9 @@ namespace Gemini.Net
 {
     public class GeminiResponse
     {
-
+        /// <summary>
+        /// Ensure extended code pages are supported
+        /// </summary>
         static GeminiResponse()
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -17,7 +19,6 @@ namespace Gemini.Net
 
         public GeminiUrl RequestUrl { get; set; }
         public DateTime RequestSent { get; set; } = DateTime.Now;
-
         public DateTime ResponseReceived { get; set; } = DateTime.Now;
 
         /// <summary>
@@ -32,8 +33,26 @@ namespace Gemini.Net
 
         public byte[] BodyBytes { get; protected set; }
 
-        public uint? BodyHash
-            => (HasBody) ? XXHash.Hash32(BodyBytes): null;
+        private long? bodyHash;
+
+        /// <summary>
+        /// Hash of just the Body (if it exists)
+        /// </summary>
+        public long? BodyHash
+        {
+            get
+            {
+                if(!HasBody)
+                {
+                    return null;
+                }
+                if(bodyHash == null)
+                {
+                    bodyHash = GeminiParser.GetResponseHash(BodyBytes);
+                }
+                return bodyHash;
+            }
+        }
 
         private string bodyText = null;
 
