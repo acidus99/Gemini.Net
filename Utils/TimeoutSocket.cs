@@ -12,29 +12,29 @@ namespace Gemini.Net.Utils
     /// </summary>
     internal class TimeoutSocket
     {
-        private bool IsConnectionSuccessful = false;
-        private Exception socketexception;
-        private ManualResetEvent TimeoutObject = new ManualResetEvent(false);
+        private bool _isConnectionSuccessful = false;
+        private Exception? _socketexception = null;
+        private ManualResetEvent _timeoutObject = new ManualResetEvent(false);
 
         public TcpClient Connect(string host, int port, int timeoutMSec)
         {
-            TimeoutObject.Reset();
-            socketexception = null;
+            _timeoutObject.Reset();
+            _socketexception = null;
 
-            TcpClient tcpclient = new TcpClient();
+            var tcpclient = new TcpClient();
 
             tcpclient.BeginConnect(host, port,
                 new AsyncCallback(CallBackMethod), tcpclient);
 
-            if (TimeoutObject.WaitOne(timeoutMSec, false))
+            if (_timeoutObject.WaitOne(timeoutMSec, false))
             {
-                if (IsConnectionSuccessful)
+                if (_isConnectionSuccessful)
                 {
                     return tcpclient;
                 }
                 else
                 {
-                    throw socketexception;
+                    throw _socketexception!;
                 }
             }
             else
@@ -46,23 +46,23 @@ namespace Gemini.Net.Utils
 
         public TcpClient Connect(IPAddress iPAddress, int port, int timeoutMSec)
         {
-            TimeoutObject.Reset();
-            socketexception = null;
+            _timeoutObject.Reset();
+            _socketexception = null;
 
             TcpClient tcpclient = new TcpClient();
 
             tcpclient.BeginConnect(iPAddress, port,
                 new AsyncCallback(CallBackMethod), tcpclient);
 
-            if (TimeoutObject.WaitOne(timeoutMSec, false))
+            if (_timeoutObject.WaitOne(timeoutMSec, false))
             {
-                if (IsConnectionSuccessful)
+                if (_isConnectionSuccessful)
                 {
                     return tcpclient;
                 }
                 else
                 {
-                    throw socketexception;
+                    throw _socketexception!;
                 }
             }
             else
@@ -76,23 +76,23 @@ namespace Gemini.Net.Utils
         {
             try
             {
-                IsConnectionSuccessful = false;
-                TcpClient tcpclient = asyncresult.AsyncState as TcpClient;
+                _isConnectionSuccessful = false;
+                TcpClient tcpclient = (TcpClient) asyncresult.AsyncState!;
 
                 if (tcpclient.Client != null)
                 {
                     tcpclient.EndConnect(asyncresult);
-                    IsConnectionSuccessful = true;
+                    _isConnectionSuccessful = true;
                 }
             }
             catch (Exception ex)
             {
-                IsConnectionSuccessful = false;
-                socketexception = ex;
+                _isConnectionSuccessful = false;
+                _socketexception = ex;
             }
             finally
             {
-                TimeoutObject.Set();
+                _timeoutObject.Set();
             }
         }
     }
