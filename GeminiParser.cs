@@ -28,64 +28,62 @@ public static class GeminiParser
     /// </summary>
     public const int ConnectionErrorStatusCode = 49;
 
-    public static bool IsInputStatus(int statusCode) => InStatusRange(statusCode, 10);
-    public static bool IsSuccessStatus(int statusCode) => InStatusRange(statusCode, 20);
-    public static bool IsRedirectStatus(int statusCode) => InStatusRange(statusCode, 30);
-    public static bool IsTempFailStatus(int statusCode) => InStatusRange(statusCode, 40);
-    public static bool IsPermFailStatus(int statusCode) => InStatusRange(statusCode, 50);
-    public static bool IsAuthStatus(int statusCode) => InStatusRange(statusCode, 60);
+    public static bool IsInputStatus(int statusCode) => isStatusInRange(statusCode, 10);
+    public static bool IsSuccessStatus(int statusCode) => isStatusInRange(statusCode, 20);
+    public static bool IsRedirectStatus(int statusCode) => isStatusInRange(statusCode, 30);
+    public static bool IsTempFailStatus(int statusCode) => isStatusInRange(statusCode, 40);
+    public static bool IsPermFailStatus(int statusCode) => isStatusInRange(statusCode, 50);
+    public static bool IsAuthStatus(int statusCode) => isStatusInRange(statusCode, 60);
 
-    private static bool InStatusRange(int statusCode, int lowRange)
+    private static bool isStatusInRange(int statusCode, int lowRange)
         => (statusCode >= lowRange && statusCode <= lowRange + 9);
 
     /// <summary>
     /// Standalong gemini response parser, given a byte array
     /// </summary>
     /// <param name="url"></param>
-    /// <param name="response"></param>
+    /// <param name="responseBytes"></param>
     /// <returns></returns>
     /// <exception cref="ArgumentNullException"></exception>
     /// <exception cref="ArgumentException"></exception>
-    public static GeminiResponse ParseResponseBytes(GeminiUrl url,  byte [] response)
+    public static GeminiResponse ParseResponseBytes(GeminiUrl url,  byte [] responseBytes)
     {
         if(url == null)
         {
             throw new ArgumentNullException(nameof(url));
         }
 
-        if(response == null)
+        if(responseBytes == null)
         {
-            throw new ArgumentNullException(nameof(response));
+            throw new ArgumentNullException(nameof(responseBytes));
         }
 
-        if(response.Length < 5)
+        if(responseBytes.Length < 5)
         {
-            throw new ArgumentException(@"Malformed Gemini response. Response line too short.", nameof(response));
+            throw new ArgumentException(@"Malformed Gemini response. Response line too short.", nameof(responseBytes));
         }
 
-        int endIndex = FindEndResponseLine(response);
+        int endIndex = FindEndResponseLine(responseBytes);
         if(endIndex == -1)
         {
-            throw new ArgumentException(@"Malformed Gemini response. Missing response line ending.n", nameof(response));
+            throw new ArgumentException(@"Malformed Gemini response. Missing response line ending.n", nameof(responseBytes));
         }
         if(endIndex < 3)
         {
-            throw new ArgumentException(@"Malformed Gemini response. Response line ending appears too early.", nameof(response));
+            throw new ArgumentException(@"Malformed Gemini response. Response line ending appears too early.", nameof(responseBytes));
         }
 
-        var responseLine = Encoding.UTF8.GetString(response, 0, endIndex);
-
+        var responseLine = Encoding.UTF8.GetString(responseBytes, 0, endIndex);
         responseLine = CleanLegacyResponseLne(responseLine);
 
-        //response line parsed by constructor. Throws an exception on invalid formats
-        GeminiResponse ret = new GeminiResponse(url, responseLine);
-        if (response.Length > endIndex + 2)
+        var response = new GeminiResponse(url, responseLine);
+        if (responseBytes.Length > endIndex + 2)
         {
             //the rest of the byte array is the body
-            ret.ParseBody(response.Skip(endIndex + 2).ToArray());
+            response.BodyBytes = responseBytes.Skip(endIndex + 2).ToArray();
         }
 
-        return ret;
+        return response;
     }
 
     public static byte[] CreateRequestBytes(GeminiUrl url)

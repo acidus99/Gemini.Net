@@ -7,24 +7,24 @@ namespace Gemini.Net
 {
     public class GeminiUrl :IEquatable<GeminiUrl>, IComparable<GeminiUrl>
     {
-        public Uri _url;
+        public readonly Uri Url;
 
         public GeminiUrl(string url)
             : this(new Uri(url)) { }
 
         public GeminiUrl(Uri url)
         {
-            _url = url;
-            if(!_url.IsAbsoluteUri)
+            Url = url;
+            if(!Url.IsAbsoluteUri)
             {
                 throw new ApplicationException("URL was not absolute!");
             }
-            if(_url.Scheme != "gemini")
+            if(Url.Scheme != "gemini")
             {
                 throw new ApplicationException("Attempting to create a non-Gemini URL!");
             }
             //.NET 5 is parsing URLs like gemini:/foo/bar as vaid absolute URLs, and not setting a hostname, so odd
-            if(String.IsNullOrEmpty(_url.Host))
+            if(String.IsNullOrEmpty(Url.Host))
             {
                 throw new ApplicationException("Invalid absolute URL. No hostname could be parsed!");
             }
@@ -51,16 +51,16 @@ namespace Gemini.Net
             }
         }
 
-        public int Port => (_url.Port > 0) ? _url.Port : 1965;
+        public int Port => (Url.Port > 0) ? Url.Port : 1965;
 
         public string Authority => $"{Hostname}:{Port}";
 
         //TODO: handle punycode/IDN
         //if you get a raw IPv6 address, DnsSafeHost removes the surround [] which you need
         public string Hostname
-            => (_url.HostNameType == UriHostNameType.IPv6) ? _url.Host : _url.DnsSafeHost;
+            => (Url.HostNameType == UriHostNameType.IPv6) ? Url.Host : Url.DnsSafeHost;
 
-        public string Path => _url.AbsolutePath;
+        public string Path => Url.AbsolutePath;
 
         public string Filename => System.IO.Path.GetFileName(Path);
 
@@ -74,19 +74,19 @@ namespace Gemini.Net
         }
 
         public string Protocol
-            => _url.Scheme;
+            => Url.Scheme;
 
         /// <summary>
         /// Does the URL have a query string (not just a ?, but a ? following by data)
         /// </summary>
         public bool HasQuery
-            => (_url.Query.Length > 1);
+            => (Url.Query.Length > 1);
 
         /// <summary>
         /// The raw, probably URL Encoded query string, without the leading ?
         /// </summary>
         public string RawQuery
-            => (_url.Query.Length > 1) ? _url.Query.Substring(1) : "";
+            => (Url.Query.Length > 1) ? Url.Query.Substring(1) : "";
 
         //Just the root url for this host
         public string RootUrl
@@ -107,26 +107,25 @@ namespace Gemini.Net
         /// The raw, probably URL Encoded fragment, without the leading #
         /// </summary>
         public string Fragment
-            => (_url.Fragment.Length > 1) ? _url.Fragment.Substring(1) : "";
+            => (Url.Fragment.Length > 1) ? Url.Fragment.Substring(1) : "";
 
         public string NormalizedUrl
             //Some gemini servers return an error if you include the port when it is
             //running on the default. Yes, these servers should fix that, but I don't
             // want errors...
             => Port == 1965 ?
-                $"gemini://{Hostname}{Path}{_url.Query}" :
-                $"gemini://{Hostname}:{Port}{Path}{_url.Query}";
+                $"gemini://{Hostname}{Path}{Url.Query}" :
+                $"gemini://{Hostname}:{Port}{Path}{Url.Query}";
 
         public override string ToString()
             => NormalizedUrl;
 
         //Handles resolving relative URLs
-        public static GeminiUrl MakeUrl(GeminiUrl request, string foundUrl)
+        public static GeminiUrl? MakeUrl(GeminiUrl request, string foundUrl)
         {
-            Uri newUrl = null;
             try
             {
-                newUrl = new Uri(request._url, foundUrl);
+                var newUrl = new Uri(request.Url, foundUrl);
                 return (newUrl.Scheme == "gemini") ? new GeminiUrl(newUrl) : null;
             }
             catch (Exception)
@@ -136,12 +135,11 @@ namespace Gemini.Net
         }
 
         //Handles normal urls
-        public static GeminiUrl MakeUrl(string url)
+        public static GeminiUrl? MakeUrl(string url)
         {
-            Uri newUrl = null;
             try
             {
-                newUrl = new Uri(url);
+                var newUrl = new Uri(url);
                 if (newUrl.IsAbsoluteUri && newUrl.Scheme == "gemini")
                 {
                     return new GeminiUrl(newUrl);
@@ -154,18 +152,18 @@ namespace Gemini.Net
         }
 
         //ultimately 2 URLs are equal if their DocID is equal
-        public bool Equals(GeminiUrl other)
+        public bool Equals(GeminiUrl? other)
             => other != null && ID.Equals(other.ID);
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
             => Equals(obj as GeminiUrl);
 
         public override int GetHashCode()
             => ID.GetHashCode();
 
-        public int CompareTo(GeminiUrl other)
+        public int CompareTo(GeminiUrl? other)
         {
-            return this.NormalizedUrl.CompareTo(other.NormalizedUrl);
+            return NormalizedUrl.CompareTo(other?.NormalizedUrl ?? "");
         }
     }
 }

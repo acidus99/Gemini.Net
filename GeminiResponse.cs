@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Globalization;
+using System.Net;
 using System.Text;
 
 using System.Net.Mime;
@@ -17,23 +18,20 @@ namespace Gemini.Net
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         }
 
-        public GeminiUrl RequestUrl { get; set; }
-        public DateTime RequestSent { get; set; } = DateTime.Now;
-        public DateTime ResponseReceived { get; set; } = DateTime.Now;
+        public IPAddress? RemoteAddress { get; set; }
 
-        /// <summary>
-        /// The full raw response line from the server. [status][0x20][meta][CR][LF]
-        /// </summary>
-        public string ResponseLine { get; protected set; }
+        public GeminiUrl RequestUrl { get; set; }
+        public DateTime? RequestSent { get; set; }
+        public DateTime? ResponseReceived { get; set; }
 
         public int StatusCode { get; set; }
 
         public bool IsConnectionError => (StatusCode == GeminiParser.ConnectionErrorStatusCode);
         public bool IsAvailable => !IsConnectionError;
 
-        public byte[] BodyBytes { get; protected set; }
+        public byte[]? BodyBytes { get; set; } = null;
 
-        private long? bodyHash;
+        private long? _bodyHash;
 
         /// <summary>
         /// Hash of just the Body (if it exists).
@@ -46,15 +44,15 @@ namespace Gemini.Net
                 {
                     return null;
                 }
-                if(bodyHash == null)
+                if(_bodyHash == null)
                 {
-                    bodyHash = GeminiParser.GetResponseHash(BodyBytes);
+                    _bodyHash = GeminiParser.GetResponseHash(BodyBytes!);
                 }
-                return bodyHash;
+                return _bodyHash;
             }
         }
 
-        private long? hash;
+        private long? _hash;
 
         /// <summary>
         /// Hash of the entire response (response line + optional body)
@@ -63,27 +61,27 @@ namespace Gemini.Net
         {
             get
             {
-                if(hash == null)
+                if(_hash == null)
                 {
-                    hash = GeminiParser.GetResponseHash(this);
+                    _hash = GeminiParser.GetResponseHash(this);
                 }
-                return hash.Value;
+                return _hash.Value;
             }
         }
 
-        private string bodyText = null;
+        private string? _bodyText = null;
 
         public string BodyText
         {
             get
             {
-                if (bodyText == null)
+                if (_bodyText == null)
                 {
-                    bodyText = (HasBody) ?
-                        GetEncoding().GetString(BodyBytes) :
+                    _bodyText = (HasBody) ?
+                        GetEncoding().GetString(BodyBytes!) :
                         "";
                 }
-                return bodyText;
+                return _bodyText;
             }
         }
 
@@ -92,12 +90,14 @@ namespace Gemini.Net
         /// <summary>
         /// The complete MIME Type, sent by the server for 2x responses
         /// </summary>
-        public string MimeType { get; protected set; }
+        public string? MimeType { get; protected set; }
 
-        public string Charset { get; protected set; }
+        public string? Charset { get; protected set; }
 
-        public string Language { get; protected set; }
+        public string? Language { get; protected set; }
 
+
+        // A response has to have a Meta, even if its an empty string
         /// <summary>
         /// Data about the response, whose meaning is status dependent
         /// 1x = Prompt to display user for input
@@ -111,9 +111,9 @@ namespace Gemini.Net
         /// <summary>
         /// Latency of the request/resp, in ms
         /// </summary>
-        public int ConnectTime { get; set; }
+        public int? ConnectTime { get; set; }
 
-        public int DownloadTime { get; set; }
+        public int? DownloadTime { get; set; }
 
         public bool IsInput => GeminiParser.IsInputStatus(StatusCode);
         public bool IsSuccess => GeminiParser.IsSuccessStatus(StatusCode);
@@ -125,34 +125,37 @@ namespace Gemini.Net
         public bool IsPermFail => GeminiParser.IsPermFailStatus(StatusCode);
         public bool IsAuth => GeminiParser.IsAuthStatus(StatusCode);
 
-        public int BodySize => HasBody ? BodyBytes.Length : 0;
+        public int BodySize => HasBody ? BodyBytes!.Length : 0;
 
         public bool IsBodyTruncated { get; set; } = false;
 
-        public GeminiResponse(GeminiUrl url = null)
+        public GeminiResponse(GeminiUrl url)
         {
             RequestUrl = url;
             StatusCode = GeminiParser.ConnectionErrorStatusCode;
-            MimeType = "";
             Meta = "";
-            ConnectTime = 0;
-            DownloadTime = 0;
         }
 
         public GeminiResponse(GeminiUrl url, string responseLine)
         {
             RequestUrl = url;
-            ResponseLine = responseLine;
 
-            int x = responseLine.IndexOf(' ');
-            if (x < 1)
+            int metaIndex = responseLine.IndexOf(' ');
+            if (metaIndex < 1)
             {
                 throw new ApplicationException($"Response Line '{responseLine}' does not match Gemini format");
             }
 
-            ParseStatusCode(responseLine.Substring(0, x));
-            ParseMeta((x > 0 && x + 1 != responseLine.Length) ?
-                responseLine.Substring(x + 1) : "");
+            ParseStatusCode(responseLine.Substring(0, metaIndex));
+
+            Meta = (metaIndex > 0 && metaIndex + 1 != responseLine.Length) ?
+                responseLine.Substring(metaIndex + 1) :
+                "";
+
+            if (IsSuccess)
+            {
+                ParseMeta();
+            }
         }
 
         private void ParseStatusCode(string status)
@@ -164,71 +167,60 @@ namespace Gemini.Net
             }
         }
 
-        private void ParseMeta(string extraData)
+        private void ParseMeta()
         {
-            Meta = extraData;
-            if(IsSuccess)
+            /*
+             * The original gemini spec said 
+             * > If <META> is an empty string, the MIME type MUST default to "text/gemini; charset=utf-8".
+             * however that is not in the more modern, up-to-date version. Adding it here for backwards support
+             * since at last one capsule is serving content that way
+             */
+            //only need to specify the mime, since UTF-8 is assumed to be the charset
+            if (Meta.Length == 0)
             {
-                /*
-                 * The original gemini spec said 
-                 * > If <META> is an empty string, the MIME type MUST default to "text/gemini; charset=utf-8".
-                 * however that is not in the more modern, up-to-date version. Adding it here for backwards support
-                 * since at last one capsule is serving content that way
-                 */
-                //only need to specify the mime, since UTF-8 is assumed to be the charset
-                if (Meta.Length == 0)
+                MimeType = "text/gemini";
+            }
+            else
+            {
+                try
                 {
-                    MimeType = "text/gemini";
+                    var contentType = new ContentType(Meta);
+                    MimeType = contentType.MediaType;
+                    if (MimeType.StartsWith("text/"))
+                    {
+                        Charset = contentType.CharSet?.ToLower();
+                        Language = GetLanugage(contentType);
+                        //force geting the encoding to valid it
+                        GetEncoding();
+                    }
                 }
-                else
+                catch (Exception)
                 {
-                    try
-                    {
-                        var contentType = new ContentType(Meta);
-                        MimeType = contentType.MediaType;
-                        if (MimeType.StartsWith("text/"))
-                        {
-                            Charset = contentType.CharSet?.ToLower();
-                            Language = GetLanugage(contentType);
-                            //force geting the encoding to valid it
-                            GetEncoding();
-                        }
-                    }
-                    catch (Exception)
-                    {
-                        //could be a malformed lang attribute with multiple langs. just snip any params
-                        int paramIndex = Meta.IndexOf(";");
-                        MimeType = (paramIndex > 0) ?
-                            Meta.Substring(0, paramIndex) :
-                            Meta;
-                        Charset = null;
-                        Language = null;
-                    }
+                    //could be a malformed lang attribute with multiple langs. just snip any params
+                    int paramIndex = Meta.IndexOf(";");
+                    MimeType = (paramIndex > 0) ?
+                        Meta.Substring(0, paramIndex) :
+                        Meta;
+                    Charset = null;
+                    Language = null;
                 }
             }
         }
 
-        private string GetLanugage(ContentType parsedType)
+        private string? GetLanugage(ContentType parsedType)
         {
             if(parsedType.Parameters.ContainsKey("lang"))
             {
                 try
                 {
-                    CultureInfo info = new CultureInfo(parsedType.Parameters["lang"]);
+                    CultureInfo info = new CultureInfo(parsedType.Parameters["lang"]!);
                     return info.TwoLetterISOLanguageName;
-                } catch(CultureNotFoundException)
+                }
+                catch (CultureNotFoundException)
                 {
                 }
             }
             return null;
-        }
-
-        public void ParseBody(byte[] body)
-        {
-            if (body.Length > 0)
-            {
-                BodyBytes = body;
-            }
         }
 
         private Encoding GetEncoding()
@@ -236,10 +228,10 @@ namespace Gemini.Net
 
         public override string ToString()
         {
-            var ret = ResponseLine;
+            var ret = $"{StatusCode} {Meta}";
             if (HasBody)
             {
-                ret += $" [{BodyBytes.Length} body bytes]";
+                ret += $" [{BodyBytes!.Length} body bytes]";
             }
             return ret;
         }

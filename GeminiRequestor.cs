@@ -25,11 +25,9 @@ namespace Gemini.Net
     {
         const int ResponseLineMaxLen = 1100;
 
-        public Exception LastException;
-
-        Stopwatch ConnectTimer;
-        Stopwatch DownloadTimer;
-        Stopwatch AbortTimer;
+        Stopwatch ConnectTimer = new Stopwatch();
+        Stopwatch DownloadTimer = new Stopwatch();
+        Stopwatch AbortTimer = new Stopwatch();
 
         /// <summary>
         /// Amount of time, in ms, to wait before aborting the request or download
@@ -50,7 +48,7 @@ namespace Gemini.Net
             => Request(new GeminiUrl(url));
 
         public GeminiResponse Request(GeminiUrl url)
-            => DoRequest(url, null);
+            => doRequest(url, null);
 
         /// <summary>
         /// Make a request to a specific IP Address
@@ -59,92 +57,106 @@ namespace Gemini.Net
         /// <param name="iPAddress"></param>
         /// <returns></returns>
         public GeminiResponse Request(GeminiUrl url, IPAddress iPAddress)
-            => DoRequest(url, iPAddress);
+            => doRequest(url, iPAddress);
 
-        private GeminiResponse DoRequest(GeminiUrl url, IPAddress iPAddress)
+        private GeminiResponse doRequest(GeminiUrl url, IPAddress? iPAddress)
         {
-            if (!url._url.IsAbsoluteUri)
+            if (!url.Url.IsAbsoluteUri)
             {
                 throw new ApplicationException("Trying to request a non-absolute URL!");
             }
 
+            IPAddress? remoteAddress = null;
             DateTime? requestSent = null;
-            DateTime? responseReceived = null;
 
-            var ret = new GeminiResponse(url);
-
-            AbortTimer = new Stopwatch();
-            ConnectTimer = new Stopwatch();
-            DownloadTimer =  new Stopwatch();
-            LastException = null;
+            AbortTimer.Reset();
+            ConnectTimer.Reset();
+            DownloadTimer.Reset();
 
             try
             {
                 var sock = new TimeoutSocket();
                 AbortTimer.Start();
-                ConnectTimer.Start();
 
                 requestSent = DateTime.Now;
+                ConnectTimer.Start();
 
-                TcpClient client = null;
-                //if we were already provided with an IP address use that
-                if (iPAddress != null)
-                {
-                    client = sock.Connect(iPAddress, url.Port, ConnectionTimeout);
-                }
-                else
-                {
-                    client = sock.Connect(url.Hostname, url.Port, ConnectionTimeout);
-                }
-
-                using (SslStream sslStream = new SslStream(client.GetStream(), false,
-                    new RemoteCertificateValidationCallback(ProcessServerCertificate), null))
+                using (TcpClient client = (iPAddress != null) ?
+                    sock.Connect(iPAddress, url.Port, ConnectionTimeout) :
+                    sock.Connect(url.Hostname, url.Port, ConnectionTimeout))
                 {
 
-                    sslStream.ReadTimeout = AbortTimeout;
-                    sslStream.AuthenticateAsClient(url.Hostname);
-                    ConnectTimer.Stop();
+                    remoteAddress = GetRemoteAddress(client);
 
-                    sslStream.Write(GeminiParser.CreateRequestBytes(url));
-                    DownloadTimer.Start();
-
-                    ret = ReadResponseLine(sslStream, url);
-                    ret.ConnectTime = (int)ConnectTimer.ElapsedMilliseconds;
-                    responseReceived = DateTime.Now;
-
-                    //there is only a body to download if this was a success
-                    if (ret.IsSuccess)
+                    using (SslStream sslStream = new SslStream(client.GetStream(), false,
+                        new RemoteCertificateValidationCallback(ProcessServerCertificate), null))
                     {
-                        bool isTruncated = false;
-                        var bodyBytes = ReadBody(sslStream, out isTruncated);
-                        ret.IsBodyTruncated = isTruncated;
 
-                        ret.DownloadTime = (int)DownloadTimer.ElapsedMilliseconds;
-                        ret.IsBodyTruncated = isTruncated;
-                        ret.ParseBody(bodyBytes);
+                        sslStream.ReadTimeout = AbortTimeout;
+                        sslStream.AuthenticateAsClient(url.Hostname);
+                        ConnectTimer.Stop();
+
+                        sslStream.Write(GeminiParser.CreateRequestBytes(url));
+                        DownloadTimer.Start();
+
+                        string respLine = ReadResponseLine(sslStream);
+                        respLine = NormalizeLegacyResponseLine(respLine);
+
+                        var response = new GeminiResponse(url, respLine)
+                        {
+                            ConnectTime = Convert.ToInt32(ConnectTimer.ElapsedMilliseconds),
+                            RequestSent = requestSent,
+                            ResponseReceived = DateTime.Now,
+                            RemoteAddress = remoteAddress
+                        };
+
+                        if (response.IsSuccess)
+                        {
+                            //there is only a body to download if this was a success
+                            var bodyInfo = ReadBody(sslStream);
+                            DownloadTimer.Stop();
+
+                            response.IsBodyTruncated = bodyInfo.isTruncated;
+                            response.BodyBytes = bodyInfo.data;
+                            response.DownloadTime = Convert.ToInt32(DownloadTimer.ElapsedMilliseconds);
+                        }
+                        else
+                        {
+                            DownloadTimer.Stop();
+                            response.DownloadTime = Convert.ToInt32(DownloadTimer.ElapsedMilliseconds);
+                        }
+                        return response;
                     }
                 }
-                client.Close();
             }
             catch(Exception ex)
             {
-                ret.StatusCode = GeminiParser.ConnectionErrorStatusCode;
-                ret.Meta = ex.Message.Trim();
-                LastException = ex;
+                return new GeminiResponse(url)
+                {
+                    Meta = ex.Message.Trim(),
+                    RemoteAddress = remoteAddress,
+                    RequestSent = requestSent,
+                    ResponseReceived = DateTime.Now
+                };
             }
-            ret.RequestSent = requestSent ?? ret.RequestSent;
-            ret.ResponseReceived = responseReceived ?? ret.RequestSent;
-
-            return ret;
         }
 
-        private bool ProcessServerCertificate(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+        private IPAddress? GetRemoteAddress(TcpClient client)
+        {
+            if(client.Client.RemoteEndPoint is IPEndPoint endpoint)
+            {
+                return endpoint.Address;
+            }
+            return null;
+        }
+
+        private bool ProcessServerCertificate(object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors)
         {
             //TODO: TOFU logic and logic to store certificate that was received...
             return true;
         }
 
-        private GeminiResponse ReadResponseLine(Stream stream, GeminiUrl url)
+        private string ReadResponseLine(Stream stream)
         {
             var respLineBuffer = new List<byte>(ResponseLineMaxLen);
             byte[] readBuffer = { 0 };
@@ -175,9 +187,7 @@ namespace Gemini.Net
             }
 
             //spec requires that the response line use UTF-8
-            var respLine = Encoding.UTF8.GetString(respLineBuffer.ToArray());
-            respLine = CleanLegacyResponseLne(respLine);
-            return new GeminiResponse(url, respLine);
+            return Encoding.UTF8.GetString(respLineBuffer.ToArray());
         }
 
         /// <summary>
@@ -185,7 +195,7 @@ namespace Gemini.Net
         /// </summary>
         /// <param name="line"></param>
         /// <returns></returns>
-        private static string CleanLegacyResponseLne(string line)
+        private static string NormalizeLegacyResponseLine(string line)
             => line.Replace('\t', ' ');
 
         /// <summary>
@@ -193,11 +203,11 @@ namespace Gemini.Net
         /// </summary>
         /// <param name="stream"></param>
         /// <returns>response body bytes</returns>
-        private byte[] ReadBody(Stream stream, out bool isTruncated)
+        private (byte[] data, bool isTruncated) ReadBody(Stream stream)
         {
             var respBytes = new List<byte>(10 * 1024);
             var readBuffer = new byte[4096];
-            isTruncated = false;
+            bool isTruncated = false;
 
             int readCount = 0;
             do
@@ -215,9 +225,7 @@ namespace Gemini.Net
                 CheckAbortTimeout();
             }
             while (readCount > 0) ;
-
-            DownloadTimer.Stop();
-            return respBytes.ToArray();
+            return (respBytes.ToArray(), isTruncated);
         }
 
         private void CheckAbortTimeout()
