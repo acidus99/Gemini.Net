@@ -31,12 +31,12 @@ namespace Gemini.Net
 
         public byte[]? BodyBytes { get; set; } = null;
 
-        private long? _bodyHash;
+        private string? _bodyHash;
 
         /// <summary>
         /// Hash of just the Body (if it exists).
         /// </summary>
-        public long? BodyHash
+        public string? BodyHash
         {
             get
             {
@@ -46,26 +46,26 @@ namespace Gemini.Net
                 }
                 if(_bodyHash == null)
                 {
-                    _bodyHash = GeminiParser.GetResponseHash(BodyBytes!);
+                    _bodyHash = GeminiParser.GetStrongHash(BodyBytes!);
                 }
                 return _bodyHash;
             }
         }
 
-        private long? _hash;
+        private string? _hash;
 
         /// <summary>
         /// Hash of the entire response (response line + optional body)
         /// </summary>
-        public long Hash
+        public string Hash
         {
             get
             {
                 if(_hash == null)
                 {
-                    _hash = GeminiParser.GetResponseHash(this);
+                    _hash = GeminiParser.GetStrongHash(this);
                 }
-                return _hash.Value;
+                return _hash;
             }
         }
 

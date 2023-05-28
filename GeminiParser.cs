@@ -7,11 +7,11 @@ using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
 using Gemini.Net.Utils;
-using HashDepot;
 
 namespace Gemini.Net;
 
@@ -108,23 +108,19 @@ public static class GeminiParser
     /// </summary>
     /// <param name="bytes"></param>
     /// <returns></returns>
-    public static long GetResponseHash(byte[] bytes)
-    {
-        //want signed long
-        return unchecked((long)XXHash.Hash64(bytes));
-    }
+    public static string GetStrongHash(byte[] bytes)
+        => "sha256:" + Convert.ToHexString(SHA256.HashData(bytes)).ToLower();
 
     /// <summary>
     /// Gets a hash of the entire response. Used when looking to see if a URL's contents have changed
     /// </summary>
     /// <param name="bytes"></param>
     /// <returns></returns>
-    public static long GetResponseHash(GeminiResponse response)
-        => GetResponseHash(CreateResponseBytes(response));
+    public static string GetStrongHash(GeminiResponse response)
+        => GetStrongHash(CreateResponseBytes(response));
 
     private static byte[] ToBytes(string s)
         => Encoding.UTF8.GetBytes(s);
-
 
     /// <summary>
     /// Early Gemini systems that used a tab between the status and the META. Clean that
