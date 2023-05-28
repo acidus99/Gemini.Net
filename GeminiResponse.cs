@@ -96,7 +96,6 @@ namespace Gemini.Net
 
         public string? Language { get; protected set; }
 
-
         // A response has to have a Meta, even if its an empty string
         /// <summary>
         /// Data about the response, whose meaning is status dependent
