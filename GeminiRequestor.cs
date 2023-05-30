@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
@@ -43,6 +44,10 @@ namespace Gemini.Net
         /// Maximum amount of data to download for the response body, before aborting
         /// </summary>
         public int MaxResponseSize { get; set; } = 5 * 1024 * 1024;
+
+        public TlsCipherSuite? NegotiatedCipherSuite { get; set; }
+        public SslProtocols? NegotiatedTlsProtocol { get; set; }
+        public X509Certificate2? RemoteCertificate { get; set; }
 
         public GeminiResponse Request(string url)
             => Request(new GeminiUrl(url));
@@ -96,6 +101,10 @@ namespace Gemini.Net
                         sslStream.AuthenticateAsClient(url.Hostname);
                         ConnectTimer.Stop();
 
+                        NegotiatedCipherSuite = sslStream.NegotiatedCipherSuite;
+                        NegotiatedTlsProtocol = sslStream.SslProtocol;
+                        RemoteCertificate = GetRemoteCertificate(sslStream);
+
                         sslStream.Write(GeminiParser.CreateRequestBytes(url));
                         DownloadTimer.Start();
 
@@ -139,6 +148,20 @@ namespace Gemini.Net
                     ResponseReceived = DateTime.Now
                 };
             }
+        }
+
+        private X509Certificate2? GetRemoteCertificate(SslStream sslStream)
+        {
+            if(sslStream.RemoteCertificate == null)
+            {
+                return null;
+            }
+
+            if(sslStream.RemoteCertificate is X509Certificate2)
+            {
+                return (X509Certificate2)sslStream.RemoteCertificate;
+            }
+            return new X509Certificate2(sslStream.RemoteCertificate);
         }
 
         private IPAddress? GetRemoteAddress(TcpClient client)
