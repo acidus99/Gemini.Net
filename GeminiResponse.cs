@@ -87,6 +87,8 @@ namespace Gemini.Net
 
         public bool HasBody => (BodyBytes?.Length > 0);
 
+        public bool HasBodyText => (BodyText.Length > 0);
+
         /// <summary>
         /// The complete MIME Type, sent by the server for 2x responses
         /// </summary>
