@@ -159,6 +159,16 @@ namespace Gemini.Net
             }
         }
 
+        public GeminiUrl? GetRedirectUrl()
+        {
+            if(!IsRedirect)
+            {
+                throw new ApplicationException("Response is not a redirect!");
+            }
+            return GeminiUrl.MakeUrl(RequestUrl, Meta);
+        }
+            
+        
         private void ParseStatusCode(string status)
         {
             StatusCode = Convert.ToInt16(status);
