@@ -109,13 +109,24 @@ namespace Gemini.Net
         public string Fragment
             => (Url.Fragment.Length > 1) ? Url.Fragment.Substring(1) : "";
 
+        private string? normalizedUrl;
+
         public string NormalizedUrl
-            //Some gemini servers return an error if you include the port when it is
-            //running on the default. Yes, these servers should fix that, but I don't
-            // want errors...
-            => Port == 1965 ?
-                $"gemini://{Hostname}{Path}{Url.Query}" :
-                $"gemini://{Hostname}:{Port}{Path}{Url.Query}";
+        {
+            get
+            {
+                if(normalizedUrl == null)
+                {
+                    //Some gemini servers return an error if you include the port when it is
+                    //running on the default. Yes, these servers should fix that, but I don't
+                    // want errors...
+                    normalizedUrl = (Port == 1965) ?
+                        $"gemini://{Hostname}{Path}{Url.Query}" :
+                        $"gemini://{Hostname}:{Port}{Path}{Url.Query}";
+                }
+                return normalizedUrl;
+            }
+        }
 
         public override string ToString()
             => NormalizedUrl;
