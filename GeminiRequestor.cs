@@ -206,7 +206,7 @@ namespace Gemini.Net
                 readCount++;
                 if (readCount > ResponseLineMaxLen)
                 {
-                    throw new ApplicationException($"Invalid gemini response line. Did not find \\r\\n within {ResponseLineMaxLen} bytes");
+                    throw new ApplicationException($"Invalid Gemini response line. Did not find \\r\\n within {ResponseLineMaxLen} bytes");
                 }
                 respLineBuffer.Add(readBuffer[0]);
                 CheckAbortTimeout();
@@ -214,7 +214,7 @@ namespace Gemini.Net
 
             if(!hasValidLineEnding)
             {
-                throw new ApplicationException($"Invalid gemini response line. Did not find \\r\\n before connection closed");
+                throw new ApplicationException($"Invalid Gemini response line. Did not find \\r\\n before connection closed");
             }
 
             //spec requires that the response line use UTF-8
