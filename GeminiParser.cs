@@ -96,7 +96,7 @@ public static class GeminiParser
     {
         byte[] fullResponseBytes = ToBytes($"{statusCode} {meta}\r\n");
 
-        if (bodyBytes != null && bodyBytes.Length > 0)
+        if (bodyBytes?.Length > 0)
         {
             fullResponseBytes = fullResponseBytes.Concat(bodyBytes).ToArray();
         }
