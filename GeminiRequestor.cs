@@ -184,6 +184,8 @@ namespace Gemini.Net
             var respLineBuffer = new List<byte>(ResponseLineMaxLen);
             byte[] readBuffer = { 0 };
 
+            bool hasValidLineEnding = false;
+
             int readCount = 0;
             //the response line is at most (2 + 1 + 1024 + 2) characters long. (a redirect with the max sized URL)
             //read that much
@@ -197,16 +199,22 @@ namespace Gemini.Net
                     {
                         throw new Exception("Malformed Gemini header - missing LF after CR");
                     }
+                    hasValidLineEnding = true;
                     break;
                 }
                 //keep going if we haven't read too many
                 readCount++;
                 if (readCount > ResponseLineMaxLen)
                 {
-                    throw new ApplicationException($"Invalid gemini response line. Did not find \\r\\n within {ResponseLineMaxLen} bytes");
+                    throw new ApplicationException($"Invalid Gemini response line. Did not find \\r\\n within {ResponseLineMaxLen} bytes");
                 }
                 respLineBuffer.Add(readBuffer[0]);
                 CheckAbortTimeout();
+            }
+
+            if(!hasValidLineEnding)
+            {
+                throw new ApplicationException($"Invalid Gemini response line. Did not find \\r\\n before connection closed");
             }
 
             //spec requires that the response line use UTF-8
