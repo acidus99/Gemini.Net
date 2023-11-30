@@ -146,8 +146,13 @@ namespace Gemini.Net
         }
 
         //Handles normal urls
-        public static GeminiUrl? MakeUrl(string url)
+        public static GeminiUrl? MakeUrl(string? url)
         {
+            if(url == null)
+            {
+                return null;
+            }
+
             try
             {
                 var newUrl = new Uri(url);
