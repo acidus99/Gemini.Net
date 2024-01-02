@@ -26,6 +26,9 @@ namespace Gemini.Net
 
         public int StatusCode { get; set; }
 
+        public string ResponseLine
+            => $"{StatusCode} {Meta}";
+
         public bool IsConnectionError => (StatusCode == GeminiParser.ConnectionErrorStatusCode);
         public bool IsAvailable => !IsConnectionError;
 
@@ -174,7 +177,7 @@ namespace Gemini.Net
             StatusCode = Convert.ToInt16(status);
             if (StatusCode < 10 || StatusCode > 69)
             {
-                throw new ApplicationException($"Invalid Static Code '{StatusCode}'");
+                throw new ApplicationException($"Invalid Status Code '{StatusCode}'");
             }
         }
 
@@ -239,7 +242,7 @@ namespace Gemini.Net
 
         public override string ToString()
         {
-            var ret = $"{StatusCode} {Meta}";
+            var ret = ResponseLine;
             if (HasBody)
             {
                 ret += $" [{BodyBytes!.Length} body bytes]";
