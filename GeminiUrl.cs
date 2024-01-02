@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Gemini.Net
 {
-    public class GeminiUrl :IEquatable<GeminiUrl>, IComparable<GeminiUrl>
+    public class GeminiUrl : IEquatable<GeminiUrl>, IComparable<GeminiUrl>
     {
         public readonly Uri Url;
 
@@ -15,16 +15,16 @@ namespace Gemini.Net
         public GeminiUrl(Uri url)
         {
             Url = url;
-            if(!Url.IsAbsoluteUri)
+            if (!Url.IsAbsoluteUri)
             {
                 throw new ApplicationException("URL was not absolute!");
             }
-            if(Url.Scheme != "gemini")
+            if (Url.Scheme != "gemini")
             {
                 throw new ApplicationException("Attempting to create a non-Gemini URL!");
             }
             //.NET 5 is parsing URLs like gemini:/foo/bar as vaid absolute URLs, and not setting a hostname, so odd
-            if(String.IsNullOrEmpty(Url.Host))
+            if (String.IsNullOrEmpty(Url.Host))
             {
                 throw new ApplicationException("Invalid absolute URL. No hostname could be parsed!");
             }
@@ -115,7 +115,7 @@ namespace Gemini.Net
         {
             get
             {
-                if(normalizedUrl == null)
+                if (normalizedUrl == null)
                 {
                     //Some gemini servers return an error if you include the port when it is
                     //running on the default. Yes, these servers should fix that, but I don't
@@ -148,7 +148,7 @@ namespace Gemini.Net
         //Handles normal urls
         public static GeminiUrl? MakeUrl(string? url)
         {
-            if(url == null)
+            if (url == null)
             {
                 return null;
             }

@@ -138,7 +138,7 @@ namespace Gemini.Net
                     }
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return new GeminiResponse(url)
                 {
@@ -152,12 +152,12 @@ namespace Gemini.Net
 
         private X509Certificate2? GetRemoteCertificate(SslStream sslStream)
         {
-            if(sslStream.RemoteCertificate == null)
+            if (sslStream.RemoteCertificate == null)
             {
                 return null;
             }
 
-            if(sslStream.RemoteCertificate is X509Certificate2)
+            if (sslStream.RemoteCertificate is X509Certificate2)
             {
                 return (X509Certificate2)sslStream.RemoteCertificate;
             }
@@ -166,7 +166,7 @@ namespace Gemini.Net
 
         private IPAddress? GetRemoteAddress(TcpClient client)
         {
-            if(client.Client.RemoteEndPoint is IPEndPoint endpoint)
+            if (client.Client.RemoteEndPoint is IPEndPoint endpoint)
             {
                 return endpoint.Address;
             }
@@ -191,7 +191,7 @@ namespace Gemini.Net
             //read that much
             while (stream.Read(readBuffer, 0, 1) == 1)
             {
-                if(readBuffer[0] == (byte)'\r')
+                if (readBuffer[0] == (byte)'\r')
                 {
                     //spec requires a \n next
                     stream.Read(readBuffer, 0, 1);
@@ -212,7 +212,7 @@ namespace Gemini.Net
                 CheckAbortTimeout();
             }
 
-            if(!hasValidLineEnding)
+            if (!hasValidLineEnding)
             {
                 throw new ApplicationException($"Invalid Gemini response line. Did not find \\r\\n before connection closed");
             }
@@ -255,13 +255,13 @@ namespace Gemini.Net
                 }
                 CheckAbortTimeout();
             }
-            while (readCount > 0) ;
+            while (readCount > 0);
             return (respBytes.ToArray(), isTruncated);
         }
 
         private void CheckAbortTimeout()
         {
-            if(AbortTimer.Elapsed.TotalMilliseconds > AbortTimeout)
+            if (AbortTimer.Elapsed.TotalMilliseconds > AbortTimeout)
             {
                 throw new ApplicationException("Requestor abort timeout exceeded.");
             }

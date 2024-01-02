@@ -46,29 +46,29 @@ public static class GeminiParser
     /// <returns></returns>
     /// <exception cref="ArgumentNullException"></exception>
     /// <exception cref="ArgumentException"></exception>
-    public static GeminiResponse ParseResponseBytes(GeminiUrl url,  byte [] responseBytes)
+    public static GeminiResponse ParseResponseBytes(GeminiUrl url, byte[] responseBytes)
     {
-        if(url == null)
+        if (url == null)
         {
             throw new ArgumentNullException(nameof(url));
         }
 
-        if(responseBytes == null)
+        if (responseBytes == null)
         {
             throw new ArgumentNullException(nameof(responseBytes));
         }
 
-        if(responseBytes.Length < 5)
+        if (responseBytes.Length < 5)
         {
             throw new ArgumentException(@"Malformed Gemini response. Response line too short.", nameof(responseBytes));
         }
 
         int endIndex = FindEndResponseLine(responseBytes);
-        if(endIndex == -1)
+        if (endIndex == -1)
         {
             throw new ArgumentException(@"Malformed Gemini response. Missing response line ending.n", nameof(responseBytes));
         }
-        if(endIndex < 3)
+        if (endIndex < 3)
         {
             throw new ArgumentException(@"Malformed Gemini response. Response line ending appears too early.", nameof(responseBytes));
         }
