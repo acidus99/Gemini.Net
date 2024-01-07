@@ -45,10 +45,6 @@ namespace Gemini.Net
         /// </summary>
         public int MaxResponseSize { get; set; } = 5 * 1024 * 1024;
 
-        public TlsCipherSuite? NegotiatedCipherSuite { get; set; }
-        public SslProtocols? NegotiatedTlsProtocol { get; set; }
-        public X509Certificate2? RemoteCertificate { get; set; }
-
         public GeminiResponse Request(string url)
             => Request(new GeminiUrl(url));
 
@@ -71,8 +67,12 @@ namespace Gemini.Net
                 throw new ApplicationException("Trying to request a non-absolute URL!");
             }
 
+            //reset Propties with values from previous request
             IPAddress? remoteAddress = null;
             DateTime? requestSent = null;
+            TlsCipherSuite? cipherSuite = null;
+            SslProtocols? tlsProtocol = null;
+            X509Certificate2? remoteCertificate = null;
 
             AbortTimer.Reset();
             ConnectTimer.Reset();
@@ -101,9 +101,9 @@ namespace Gemini.Net
                         sslStream.AuthenticateAsClient(url.Hostname);
                         ConnectTimer.Stop();
 
-                        NegotiatedCipherSuite = sslStream.NegotiatedCipherSuite;
-                        NegotiatedTlsProtocol = sslStream.SslProtocol;
-                        RemoteCertificate = GetRemoteCertificate(sslStream);
+                        cipherSuite = sslStream.NegotiatedCipherSuite;
+                        tlsProtocol = sslStream.SslProtocol;
+                        remoteCertificate = GetRemoteCertificate(sslStream);
 
                         sslStream.Write(GeminiParser.CreateRequestBytes(url));
                         DownloadTimer.Start();
@@ -116,7 +116,13 @@ namespace Gemini.Net
                             ConnectTime = Convert.ToInt32(ConnectTimer.ElapsedMilliseconds),
                             RequestSent = requestSent,
                             ResponseReceived = DateTime.Now,
-                            RemoteAddress = remoteAddress
+                            RemoteAddress = remoteAddress,
+                            TlsInfo = new TlsConnectionInfo
+                            {
+                                CipherSuite = cipherSuite,
+                                Protocol = tlsProtocol,
+                                RemoteCertificate = remoteCertificate
+                            }
                         };
 
                         if (response.IsSuccess)
@@ -145,7 +151,13 @@ namespace Gemini.Net
                     Meta = ex.Message.Trim(),
                     RemoteAddress = remoteAddress,
                     RequestSent = requestSent,
-                    ResponseReceived = DateTime.Now
+                    ResponseReceived = DateTime.Now,
+                    TlsInfo = new TlsConnectionInfo
+                    {
+                        CipherSuite = cipherSuite,
+                        Protocol = tlsProtocol,
+                        RemoteCertificate = remoteCertificate
+                    }
                 };
             }
         }

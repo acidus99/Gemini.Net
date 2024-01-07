@@ -20,6 +20,8 @@ namespace Gemini.Net
 
         public IPAddress? RemoteAddress { get; set; }
 
+        public TlsConnectionInfo? TlsInfo { get; set; }
+
         public GeminiUrl RequestUrl { get; set; }
         public DateTime? RequestSent { get; set; }
         public DateTime? ResponseReceived { get; set; }
