@@ -67,8 +67,8 @@ namespace Gemini.Net
                 throw new ApplicationException("Trying to request a non-absolute URL!");
             }
 
-            //reset Propties with values from previous request
-            IPAddress? remoteAddress = null;
+            //connection level properties
+            IPAddress? remoteAddress = iPAddress;
             DateTime? requestSent = null;
             TlsCipherSuite? cipherSuite = null;
             SslProtocols? tlsProtocol = null;
