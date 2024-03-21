@@ -4,7 +4,6 @@ using System.Net;
 using System.Text;
 
 using System.Net.Mime;
-using HashDepot;
 
 namespace Gemini.Net
 {
@@ -160,7 +159,7 @@ namespace Gemini.Net
 
             if (IsSuccess)
             {
-                ParseMeta();
+                ParseMimeType();
             }
         }
 
@@ -183,8 +182,12 @@ namespace Gemini.Net
             }
         }
 
-        private void ParseMeta()
+        private void ParseMimeType()
         {
+
+            //some meta can have trailing/leading whitespace. so trim it
+            var normalizedMeta = Meta.Trim();
+
             /*
              * The original gemini spec said 
              * > If <META> is an empty string, the MIME type MUST default to "text/gemini; charset=utf-8".
@@ -192,7 +195,7 @@ namespace Gemini.Net
              * since at last one capsule is serving content that way
              */
             //only need to specify the mime, since UTF-8 is assumed to be the charset
-            if (Meta.Length == 0)
+            if (normalizedMeta.Length == 0)
             {
                 MimeType = "text/gemini";
             }
@@ -200,20 +203,20 @@ namespace Gemini.Net
             {
                 try
                 {
-                    var contentType = new ContentType(Meta);
+                    var contentType = new ContentType(normalizedMeta);
                     MimeType = contentType.MediaType;
                     if (MimeType.StartsWith("text/"))
                     {
                         Charset = contentType.CharSet?.ToLower();
-                        Language = GetLanugage(contentType);
-                        //force geting the encoding to valid it
+                        Language = GetLanguage(contentType);
+                        //force geting the encoding to validate it
                         GetEncoding();
                     }
                 }
                 catch (Exception)
                 {
                     //could be a malformed lang attribute with multiple langs. just snip any params
-                    int paramIndex = Meta.IndexOf(";");
+                    int paramIndex = normalizedMeta.IndexOf(";");
                     MimeType = (paramIndex > 0) ?
                         Meta.Substring(0, paramIndex) :
                         Meta;
@@ -223,7 +226,7 @@ namespace Gemini.Net
             }
         }
 
-        private string? GetLanugage(ContentType parsedType)
+        private string? GetLanguage(ContentType parsedType)
         {
             if(parsedType.Parameters.ContainsKey("lang"))
             {
