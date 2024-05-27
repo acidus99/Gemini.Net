@@ -14,23 +14,43 @@ public class GeminiUrl : IEquatable<GeminiUrl>, IComparable<GeminiUrl>
 
     public GeminiUrl(Uri url)
     {
-        Url = url;
-        if (!Url.IsAbsoluteUri)
+        if (!url.IsAbsoluteUri)
         {
             throw new ApplicationException("URL was not absolute!");
         }
-        if (Url.Scheme != "gemini")
+        if (url.Scheme != "gemini")
         {
             throw new ApplicationException("Attempting to create a non-Gemini URL!");
         }
-        //.NET 5 is parsing URLs like gemini:/foo/bar as vaid absolute URLs, and not setting a hostname, so odd
-        if (String.IsNullOrEmpty(Url.Host))
+        /*
+         * Because .NET doesn't know about Gemini is, it will parse URLs that it shouldn't. e.g.:
+         * - gemini:/foo/bar as vaid absolute URLs, and not setting a hostname
+         * - gemini://. as an absolute URL with a hostname of "." which is not a valid hostname
+         */
+        if (string.IsNullOrEmpty(url.Host) || (url.Host.Length > 0 && !char.IsAsciiLetterOrDigit(url.Host[0])))
         {
             throw new ApplicationException("Invalid absolute URL. No hostname could be parsed!");
         }
 
-        //TODO: Add URL normalization logic per RFC 3986
-        //TODO: add URL restrictions in Gemini spec (no userinfo, etc)
+        //URL normalization logic per RFC 3986
+        //TODO: normalizing hex digits in URL encoding, force unencoding of certain characters (~), etc.
+
+        UriBuilder builder = new UriBuilder(url);
+
+        //Remove any trailing . from the hostname
+        if(builder.Host.Length > 1 && builder.Host.EndsWith('.'))
+        {
+            builder.Host = builder.Host[..^1];
+        }
+
+        //.NET URL parsing already takes care of ../ and ./ in the path, but not //
+        builder.Path = builder.Path.Replace("//", "/");
+
+        //Gemini URLs ignore blank out userinfo
+        builder.UserName = "";
+        builder.Password = "";
+
+        Url = builder.Uri;         
     }
 
     private long? urlID;
@@ -176,6 +196,7 @@ public class GeminiUrl : IEquatable<GeminiUrl>, IComparable<GeminiUrl>
 
     public override int GetHashCode()
         => ID.GetHashCode();
+
 
     public int CompareTo(GeminiUrl? other)
     {
