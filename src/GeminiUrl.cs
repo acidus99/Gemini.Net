@@ -16,20 +16,20 @@ public class GeminiUrl : IEquatable<GeminiUrl>, IComparable<GeminiUrl>
     {
         if (!url.IsAbsoluteUri)
         {
-            throw new ApplicationException("URL was not absolute!");
+            throw new UriFormatException("URL was not absolute!");
         }
         if (url.Scheme != "gemini")
         {
-            throw new ApplicationException("Attempting to create a non-Gemini URL!");
+            throw new UriFormatException("Attempting to create a non-Gemini URL!");
         }
         /*
          * Because .NET doesn't know about Gemini is, it will parse URLs that it shouldn't. e.g.:
          * - gemini:/foo/bar as vaid absolute URLs, and not setting a hostname
          * - gemini://. as an absolute URL with a hostname of "." which is not a valid hostname
          */
-        if (string.IsNullOrEmpty(url.Host) || (url.Host.Length > 0 && !char.IsAsciiLetterOrDigit(url.Host[0])))
+        if (string.IsNullOrEmpty(url.Host) || (url.IdnHost.Length > 0 && !char.IsAsciiLetterOrDigit(url.IdnHost[0])))
         {
-            throw new ApplicationException("Invalid absolute URL. No hostname could be parsed!");
+            throw new UriFormatException("Invalid absolute URL. No hostname could be parsed!");
         }
 
         //URL normalization logic per RFC 3986
