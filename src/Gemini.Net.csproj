@@ -1,24 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
-      <Nullable>enable</Nullable>
-       <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <None Remove="Utils\" />
-    <None Remove="HashDepot" />
-    <None Remove="LICENSE" />
-    <None Remove="README.md" />
-    <None Remove=".gitignore" />
-    <None Remove=".gitattributes" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Utils\" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="HashDepot" Version="3.1.0" />
-    <PackageReference Include="System.Text.Encoding.CodePages" Version="7.0.0" />
-  </ItemGroup>
+    <ItemGroup>
+        <None Remove="Utils\"/>
+        <None Remove="HashDepot"/>
+        <None Remove="LICENSE"/>
+        <None Remove="README.md"/>
+        <None Remove=".gitignore"/>
+        <None Remove=".gitattributes"/>
+    </ItemGroup>
+    <ItemGroup>
+        <Folder Include="Utils\"/>
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="HashDepot" Version="3.1.0"/>
+        <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0"/>
+    </ItemGroup>
 </Project>
