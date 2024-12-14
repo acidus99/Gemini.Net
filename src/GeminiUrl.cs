@@ -46,6 +46,11 @@ public class GeminiUrl : IEquatable<GeminiUrl>, IComparable<GeminiUrl>
         //.NET URL parsing already takes care of ../ and ./ in the path, but not //
         builder.Path = builder.Path.Replace("//", "/");
 
+        if (builder.Port == 1965)
+        {
+            builder.Port = -1;
+        }
+        
         //Gemini URLs ignore blank out userinfo
         builder.UserName = "";
         builder.Password = "";
