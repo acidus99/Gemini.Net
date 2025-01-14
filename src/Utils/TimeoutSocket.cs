@@ -2,6 +2,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Gemini.Net.Utils
 {
@@ -10,89 +11,42 @@ namespace Gemini.Net.Utils
     /// during the connect if too much time passes
     /// 
     /// </summary>
-    internal class TimeoutSocket
+   internal class TimeoutSocket
     {
-        private bool _isConnectionSuccessful = false;
-        private Exception? _socketexception = null;
-        private ManualResetEvent _timeoutObject = new ManualResetEvent(false);
-
-        public TcpClient Connect(string host, int port, int timeoutMSec)
+        public async Task<TcpClient> ConnectAsync(string host, int port, int timeoutMs, CancellationToken cancellationToken = default)
         {
-            _timeoutObject.Reset();
-            _socketexception = null;
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(timeoutMs);
 
-            var tcpclient = new TcpClient();
-
-            tcpclient.BeginConnect(host, port,
-                new AsyncCallback(CallBackMethod), tcpclient);
-
-            if (_timeoutObject.WaitOne(timeoutMSec, false))
-            {
-                if (_isConnectionSuccessful)
-                {
-                    return tcpclient;
-                }
-                else
-                {
-                    throw _socketexception!;
-                }
-            }
-            else
-            {
-                tcpclient.Close();
-                throw new TimeoutException("TimeOut Exception");
-            }
-        }
-
-        public TcpClient Connect(IPAddress iPAddress, int port, int timeoutMSec)
-        {
-            _timeoutObject.Reset();
-            _socketexception = null;
-
-            TcpClient tcpclient = new TcpClient();
-
-            tcpclient.BeginConnect(iPAddress, port,
-                new AsyncCallback(CallBackMethod), tcpclient);
-
-            if (_timeoutObject.WaitOne(timeoutMSec, false))
-            {
-                if (_isConnectionSuccessful)
-                {
-                    return tcpclient;
-                }
-                else
-                {
-                    throw _socketexception!;
-                }
-            }
-            else
-            {
-                tcpclient.Close();
-                throw new TimeoutException("TimeOut Exception");
-            }
-        }
-
-        private void CallBackMethod(IAsyncResult asyncresult)
-        {
+            var tcpClient = new TcpClient();
             try
             {
-                _isConnectionSuccessful = false;
-                TcpClient tcpclient = (TcpClient) asyncresult.AsyncState!;
+                await tcpClient.ConnectAsync(host, port, cts.Token).ConfigureAwait(false);
+                return tcpClient;
+            }
+            catch
+            {
+                tcpClient.Dispose();
+                throw;
+            }
+        }
 
-                if (tcpclient.Client != null)
-                {
-                    tcpclient.EndConnect(asyncresult);
-                    _isConnectionSuccessful = true;
-                }
-            }
-            catch (Exception ex)
+        public async Task<TcpClient> ConnectAsync(IPAddress address, int port, int timeoutMs, CancellationToken cancellationToken = default)
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(timeoutMs);
+
+            var tcpClient = new TcpClient();
+
+            try
             {
-                _isConnectionSuccessful = false;
-                _socketexception = ex;
+                await tcpClient.ConnectAsync(address, port, cts.Token).ConfigureAwait(false);
+                return tcpClient;
             }
-            finally
+            catch
             {
-                _timeoutObject.Set();
+                tcpClient.Dispose();
+                throw;
             }
         }
     }
