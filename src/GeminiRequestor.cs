@@ -9,11 +9,8 @@ using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using Gemini.Net.Utils;
 
-namespace Gemini.Net;
+using Gemini.Net.Utils;
 
 //Using aspects of Gemini C# library SmolNetSharp for inspiration specifically:
 //https://github.com/LukeEmmet/SmolNetSharp/blob/master/SmolNetSharp/Gemini.cs
@@ -23,12 +20,15 @@ namespace Gemini.Net;
 // - Deciding to download the body or not based on the MIME type. This allows crawlers
 // that are only interested in text content to move on more quickly and use less server
 // resources
+namespace Gemini.Net;
+
 public class GeminiRequestor
 {
     const int ResponseLineMaxLen = 1100;
 
     Stopwatch ConnectTimer = new Stopwatch();
     Stopwatch DownloadTimer = new Stopwatch();
+    Stopwatch AbortTimer = new Stopwatch();
 
     /// <summary>
     /// Amount of time, in ms, to wait before aborting the request or download
@@ -46,77 +46,69 @@ public class GeminiRequestor
     public int MaxResponseSize { get; set; } = 5 * 1024 * 1024;
 
     public GeminiResponse Request(string url)
-        => Task.Run(() => RequestAsync(new GeminiUrl(url))).Result;
+        => Request(new GeminiUrl(url));
 
     public GeminiResponse Request(GeminiUrl url)
-        => Task.Run(() => RequestAsync(url)).Result;
+        => doRequest(url, null);
 
+    /// <summary>
+    /// Make a request to a specific IP Address
+    /// </summary>
+    /// <param name="url"></param>
+    /// <param name="iPAddress"></param>
+    /// <returns></returns>
     public GeminiResponse Request(GeminiUrl url, IPAddress iPAddress)
-        => Task.Run(() => RequestAsync(url, iPAddress)).Result;
+        => doRequest(url, iPAddress);
 
-    public async Task<GeminiResponse> RequestAsync(string url, CancellationToken cancellationToken = default)
-        => await RequestAsync(new GeminiUrl(url), null, cancellationToken);
-
-    public async Task<GeminiResponse> RequestAsync(GeminiUrl url, CancellationToken cancellationToken = default)
-        => await RequestAsync(url, null, cancellationToken);
-
-    public async Task<GeminiResponse> RequestAsync(GeminiUrl url, IPAddress? iPAddress,
-        CancellationToken userCancellationToken = default)
+    private GeminiResponse doRequest(GeminiUrl url, IPAddress? iPAddress)
     {
         if (!url.Url.IsAbsoluteUri)
         {
             throw new ApplicationException("Trying to request a non-absolute URL!");
         }
 
-        //Add an overall abort timeout to our user-cancellable token
-        var overallCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(userCancellationToken);
-        overallCancellationToken.CancelAfter(AbortTimeout);
-
+        //connection level properties
         IPAddress? remoteAddress = iPAddress;
         DateTime? requestSent = null;
         TlsCipherSuite? cipherSuite = null;
         SslProtocols? tlsProtocol = null;
         X509Certificate2? remoteCertificate = null;
 
+        AbortTimer.Reset();
         ConnectTimer.Reset();
         DownloadTimer.Reset();
 
         try
         {
             var sock = new TimeoutSocket();
+            AbortTimer.Start();
 
             requestSent = DateTime.Now;
             ConnectTimer.Start();
 
-            using (var client = (iPAddress != null)
-                       ? await sock.ConnectAsync(iPAddress, url.Port, ConnectionTimeout, overallCancellationToken.Token)
-                       : await sock.ConnectAsync(url.Hostname, url.Port, ConnectionTimeout,
-                           overallCancellationToken.Token))
+            using (TcpClient client = (iPAddress != null) ?
+                sock.Connect(iPAddress, url.Port, ConnectionTimeout) :
+                sock.Connect(url.Hostname, url.Port, ConnectionTimeout))
             {
+
                 remoteAddress = GetRemoteAddress(client);
 
-                using (var sslStream = new SslStream(client.GetStream(), false, ProcessServerCertificate, null))
+                using (SslStream sslStream = new SslStream(client.GetStream(), false,
+                    new RemoteCertificateValidationCallback(ProcessServerCertificate), null))
                 {
+
                     sslStream.ReadTimeout = AbortTimeout;
-
-
-                    var sslOptions = new SslClientAuthenticationOptions
-                    {
-                        TargetHost = url.Hostname,
-                        RemoteCertificateValidationCallback = ProcessServerCertificate
-                    };
-
-                    await sslStream.AuthenticateAsClientAsync(sslOptions, overallCancellationToken.Token);
+                    sslStream.AuthenticateAsClient(url.Hostname);
                     ConnectTimer.Stop();
 
                     cipherSuite = sslStream.NegotiatedCipherSuite;
                     tlsProtocol = sslStream.SslProtocol;
                     remoteCertificate = GetRemoteCertificate(sslStream);
 
-                    await sslStream.WriteAsync(GeminiParser.CreateRequestBytes(url), overallCancellationToken.Token);
+                    sslStream.Write(GeminiParser.CreateRequestBytes(url));
                     DownloadTimer.Start();
 
-                    string respLine = await ReadResponseLineAsync(sslStream, overallCancellationToken.Token);
+                    string respLine = ReadResponseLine(sslStream);
                     respLine = NormalizeLegacyResponseLine(respLine);
 
                     var response = new GeminiResponse(url, respLine)
@@ -135,7 +127,8 @@ public class GeminiRequestor
 
                     if (response.IsSuccess)
                     {
-                        var bodyInfo = await ReadBodyAsync(sslStream, userCancellationToken);
+                        //there is only a body to download if this was a success
+                        var bodyInfo = ReadBody(sslStream);
                         DownloadTimer.Stop();
 
                         response.IsBodyTruncated = bodyInfo.isTruncated;
@@ -147,14 +140,9 @@ public class GeminiRequestor
                         DownloadTimer.Stop();
                         response.DownloadTime = Convert.ToInt32(DownloadTimer.ElapsedMilliseconds);
                     }
-
                     return response;
                 }
             }
-        }
-        catch (OperationCanceledException)
-        {
-            throw new TaskCanceledException("The request was canceled.");
         }
         catch (Exception ex)
         {
@@ -174,7 +162,36 @@ public class GeminiRequestor
         }
     }
 
-    private async Task<string> ReadResponseLineAsync(Stream stream, CancellationToken cancellationToken)
+    private X509Certificate2? GetRemoteCertificate(SslStream sslStream)
+    {
+        if (sslStream.RemoteCertificate == null)
+        {
+            return null;
+        }
+
+        if (sslStream.RemoteCertificate is X509Certificate2)
+        {
+            return (X509Certificate2)sslStream.RemoteCertificate;
+        }
+        return new X509Certificate2(sslStream.RemoteCertificate);
+    }
+
+    private IPAddress? GetRemoteAddress(TcpClient client)
+    {
+        if (client.Client.RemoteEndPoint is IPEndPoint endpoint)
+        {
+            return endpoint.Address;
+        }
+        return null;
+    }
+
+    private bool ProcessServerCertificate(object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors)
+    {
+        //TODO: TOFU logic and logic to store certificate that was received...
+        return true;
+    }
+
+    private string ReadResponseLine(Stream stream)
     {
         var respLineBuffer = new List<byte>(ResponseLineMaxLen);
         byte[] readBuffer = { 0 };
@@ -184,13 +201,12 @@ public class GeminiRequestor
         int readCount = 0;
         //the response line is at most (2 + 1 + 1024 + 2) characters long. (a redirect with the max sized URL)
         //read that much
-
-        while (await stream.ReadAsync(readBuffer.AsMemory(0, 1), cancellationToken) == 1)
+        while (stream.Read(readBuffer, 0, 1) == 1)
         {
             if (readBuffer[0] == (byte)'\r')
             {
-                //spec requires a '\n' next
-                await stream.ReadExactlyAsync(readBuffer, 0, 1, cancellationToken);
+                //spec requires a \n next
+                stream.Read(readBuffer, 0, 1);
                 if (readBuffer[0] != (byte)'\n')
                 {
                     throw new Exception("Malformed Gemini header - missing LF after CR");
@@ -205,9 +221,9 @@ public class GeminiRequestor
                 throw new ApplicationException($"Invalid Gemini response line. Did not find \\r\\n within {ResponseLineMaxLen} bytes");
             }
             respLineBuffer.Add(readBuffer[0]);
+            CheckAbortTimeout();
         }
 
-       
         if (!hasValidLineEnding)
         {
             throw new ApplicationException($"Invalid Gemini response line. Did not find \\r\\n before connection closed");
@@ -218,13 +234,19 @@ public class GeminiRequestor
     }
 
     /// <summary>
+    /// Early Gemini systems that used a tab between the status and the META. Clean that
+    /// </summary>
+    /// <param name="line"></param>
+    /// <returns></returns>
+    private static string NormalizeLegacyResponseLine(string line)
+        => line.Replace('\t', ' ');
+
+    /// <summary>
     /// Reads the response body. Aborts if timeout or max size is exceeded
     /// </summary>
     /// <param name="stream"></param>
-    /// <param name="cancellationToken"></param>
     /// <returns>response body bytes</returns>
-    private async Task<(byte[] data, bool isTruncated)> ReadBodyAsync(Stream stream,
-        CancellationToken cancellationToken)
+    private (byte[] data, bool isTruncated) ReadBody(Stream stream)
     {
         var respBytes = new List<byte>(10 * 1024);
         var readBuffer = new byte[4096];
@@ -233,58 +255,27 @@ public class GeminiRequestor
         int readCount = 0;
         do
         {
-            readCount = await stream.ReadAsync(readBuffer, 0, readBuffer.Length, cancellationToken);
-
+            readCount = stream.Read(readBuffer, 0, readBuffer.Length);
             if (readCount > 0)
             {
                 respBytes.AddRange(readBuffer.Take(readCount));
             }
-
             if (respBytes.Count > MaxResponseSize)
             {
                 isTruncated = true;
+                break;
             }
-        } while (readCount > 0 && !isTruncated);
-
+            CheckAbortTimeout();
+        }
+        while (readCount > 0);
         return (respBytes.ToArray(), isTruncated);
     }
 
-    private bool ProcessServerCertificate(object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors)
+    private void CheckAbortTimeout()
     {
-        //TODO: TOFU logic and logic to store certificate that was received...
-        return true;
-    }
-
-    private X509Certificate2? GetRemoteCertificate(SslStream sslStream)
-    {
-        if (sslStream.RemoteCertificate == null)
+        if (AbortTimer.Elapsed.TotalMilliseconds > AbortTimeout)
         {
-            return null;
+            throw new ApplicationException("Requestor abort timeout exceeded.");
         }
-
-        if (sslStream.RemoteCertificate is X509Certificate2)
-        {
-            return (X509Certificate2)sslStream.RemoteCertificate;
-        }
-
-        return new X509Certificate2(sslStream.RemoteCertificate);
     }
-
-    private IPAddress? GetRemoteAddress(TcpClient client)
-    {
-        if (client.Client.RemoteEndPoint is IPEndPoint endpoint)
-        {
-            return endpoint.Address;
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Early Gemini systems that used a tab between the status and the META. Clean that
-    /// </summary>
-    /// <param name="line"></param>
-    /// <returns></returns>
-    private static string NormalizeLegacyResponseLine(string line)
-        => line.Replace('\t', ' ');
 }
